@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>Rubik Timer</title>
+  <rect width="512" height="512" fill="#101d32"/>
+  <g fill="#fff">
+    <rect x="76" y="76" width="112" height="112" rx="16" fill="#1769ed"/>
+    <rect x="200" y="76" width="112" height="112" rx="16" fill="#22c55e"/>
+    <rect x="324" y="76" width="112" height="112" rx="16" fill="#1769ed"/>
+    <rect x="76" y="200" width="112" height="112" rx="16" fill="#22c55e"/>
+    <rect x="200" y="200" width="112" height="112" rx="16" fill="#1769ed"/>
+    <rect x="324" y="200" width="112" height="112" rx="16" fill="#22c55e"/>
+    <rect x="76" y="324" width="112" height="112" rx="16" fill="#1769ed"/>
+    <rect x="200" y="324" width="112" height="112" rx="16" fill="#22c55e"/>
+    <rect x="324" y="324" width="112" height="112" rx="16" fill="#1769ed"/>
+  </g>
+</svg>
