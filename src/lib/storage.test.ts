@@ -3,9 +3,15 @@ import { EXPORT_FORMAT, EXPORT_VERSION, parseImport } from './storage';
 
 const SEQUENCE = "R U R' U'";
 
-function exportJson(scrambles: object[]): string {
-  return JSON.stringify({ format: EXPORT_FORMAT, version: EXPORT_VERSION, scrambles, solves: [] });
+function exportJson(scrambles: object[], sets?: unknown, solves: object[] = []): string {
+  return JSON.stringify({ format: EXPORT_FORMAT, version: EXPORT_VERSION, scrambles, solves, sets });
 }
+
+const THREE = [
+  { id: 'a', scramble: SEQUENCE, createdAt: 1, number: 1 },
+  { id: 'b', scramble: SEQUENCE, createdAt: 2, number: 2 },
+  { id: 'c', scramble: SEQUENCE, createdAt: 3, number: 3 },
+];
 
 describe('parseImport scramble numbers', () => {
   it('keeps stored numbers, including gaps left by deleted scrambles', () => {
@@ -39,5 +45,67 @@ describe('parseImport scramble numbers', () => {
       ]),
     );
     expect(data.scrambles.map((s) => s.number)).toEqual([6, 5]);
+  });
+});
+
+describe('parseImport sets', () => {
+  it('reads no sets from files exported before sets existed', () => {
+    expect(parseImport(exportJson(THREE)).sets).toEqual([]);
+  });
+
+  it('keeps a set with its scramble order, title and notes', () => {
+    const data = parseImport(
+      exportJson(THREE, [{ id: 's1', createdAt: 5, number: 1, scrambleIds: ['c', 'a'], title: 'Final', notes: 'n' }]),
+    );
+    expect(data.sets).toEqual([{ id: 's1', createdAt: 5, number: 1, scrambleIds: ['c', 'a'], title: 'Final', notes: 'n' }]);
+  });
+
+  it('drops unknown and duplicate scramble ids and scrambles claimed by an earlier set', () => {
+    const data = parseImport(
+      exportJson(THREE, [
+        { id: 's1', createdAt: 5, number: 1, scrambleIds: ['a', 'zzz', 'a', 'b'] },
+        { id: 's2', createdAt: 6, number: 2, scrambleIds: ['b', 'c'] },
+        { id: 's3', createdAt: 7, number: 3, scrambleIds: ['a'] },
+      ]),
+    );
+    expect(data.sets.map((s) => [s.id, s.scrambleIds])).toEqual([
+      ['s1', ['a', 'b']],
+      ['s2', ['c']],
+    ]);
+  });
+
+  it('numbers sets saved without numbers by creation order', () => {
+    const data = parseImport(
+      exportJson(THREE, [
+        { id: 's2', createdAt: 6, scrambleIds: ['b'] },
+        { id: 's1', createdAt: 5, scrambleIds: ['a'] },
+      ]),
+    );
+    expect(data.sets.map((s) => [s.id, s.number])).toEqual([
+      ['s1', 1],
+      ['s2', 2],
+    ]);
+  });
+
+  it('rejects a sets field that is not an array', () => {
+    expect(() => parseImport(exportJson(THREE, 'nope'))).toThrow('invalid-data');
+  });
+});
+
+describe('parseImport solve penalties', () => {
+  const solve = { id: 's', scrambleId: 'a', timeMs: 10000, penalty: 'plus2', createdAt: 1 };
+
+  it('reads a solve without an inspection penalty as timed without inspection', () => {
+    expect(parseImport(exportJson(THREE, undefined, [solve])).solves).toEqual([solve]);
+  });
+
+  it('keeps an inspection penalty', () => {
+    const { solves } = parseImport(exportJson(THREE, undefined, [{ ...solve, inspectionPenalty: 'dnf' }]));
+    expect(solves[0]?.inspectionPenalty).toBe('dnf');
+  });
+
+  it('drops a solve with an unknown inspection penalty', () => {
+    const { solves } = parseImport(exportJson(THREE, undefined, [{ ...solve, inspectionPenalty: 'plus4' }]));
+    expect(solves).toEqual([]);
   });
 });

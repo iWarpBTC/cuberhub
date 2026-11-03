@@ -1,15 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Cheatsheet, type CheatsheetTab } from './components/Cheatsheet';
 import { ScrambleList } from './components/ScrambleList';
 import { ScramblePanel } from './components/ScramblePanel';
+import { SetPanel } from './components/SetPanel';
 import { useMediaQuery } from './hooks/useMediaQuery';
 import { useTimer } from './hooks/useTimer';
 import { useWakeLock } from './hooks/useWakeLock';
 import { useLanguage } from './i18n/LanguageContext';
 import { createScramble } from './lib/scramble';
 import { newId } from './lib/id';
-import { loadListOpen, saveListOpen } from './lib/storage';
-import { useDispatch, useStore } from './store/StoreContext';
+import { loadInspection, loadListOpen, saveInspection, saveListOpen } from './lib/storage';
+import { addSetAction, useActiveSet, useDispatch, useSetOf, useStore } from './store/StoreContext';
 
 /** Matches Tailwind's `md` breakpoint: the scramble list is a sidebar from here up, a drawer below. */
 const WIDE_QUERY = '(min-width: 768px)';
@@ -26,6 +27,8 @@ const TOOLBAR_BUTTON =
 export function App() {
   const { t, lang, setLang } = useLanguage();
   const { activeScrambleId, selectedSolveId } = useStore();
+  const activeSet = useActiveSet();
+  const setOfActive = useSetOf(activeScrambleId);
   const dispatch = useDispatch();
   const searchRef = useRef<HTMLInputElement>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -43,15 +46,27 @@ export function App() {
 
   useEffect(() => saveListOpen(sidebarOpen), [sidebarOpen]);
 
+  // WCA inspection before each solve; off unless the user turned it on.
+  const [inspection, setInspection] = useState(loadInspection);
+  useEffect(() => saveInspection(inspection), [inspection]);
+
   const activeScrambleIdRef = useRef(activeScrambleId);
   activeScrambleIdRef.current = activeScrambleId;
   const selectedSolveIdRef = useRef(selectedSolveId);
   selectedSolveIdRef.current = selectedSolveId;
+  // The neighbours of the active scramble inside its set, for the arrow keys.
+  const neighbours = useMemo(() => {
+    if (setOfActive === null || activeScrambleId === null) return null;
+    const index = setOfActive.scrambleIds.indexOf(activeScrambleId);
+    return { prev: setOfActive.scrambleIds[index - 1] ?? null, next: setOfActive.scrambleIds[index + 1] ?? null };
+  }, [setOfActive, activeScrambleId]);
+  const neighboursRef = useRef(neighbours);
+  neighboursRef.current = neighbours;
   const modalOpen = dialogOpen || cheatsheetOpen;
   const modalOpenRef = useRef(modalOpen);
   modalOpenRef.current = modalOpen;
 
-  const timer = useTimer(!modalOpen && activeScrambleId !== null, (elapsedMs) => {
+  const timer = useTimer(!modalOpen && activeScrambleId !== null, inspection, ({ elapsedMs, inspectionPenalty }) => {
     const scrambleId = activeScrambleIdRef.current;
     if (scrambleId === null) return;
     dispatch({
@@ -61,6 +76,7 @@ export function App() {
         scrambleId,
         timeMs: elapsedMs,
         penalty: 'none',
+        ...(inspectionPenalty === null ? {} : { inspectionPenalty }),
         createdAt: Date.now(),
       },
     });
@@ -69,6 +85,8 @@ export function App() {
   // A running solve turns the timer area green and keeps the screen from sleeping.
   const running = timer.phase === 'running';
   useWakeLock(running);
+  const timerIdleRef = useRef(timer.phase === 'idle');
+  timerIdleRef.current = timer.phase === 'idle';
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -76,6 +94,11 @@ export function App() {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
         e.preventDefault();
         dispatch({ type: 'ADD_SCRAMBLE', scramble: createScramble() });
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        dispatch(addSetAction(5));
         return;
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
@@ -96,6 +119,14 @@ export function App() {
       }
       if (e.key === 'Escape' && !wide) {
         setDrawerOpen(false);
+        return;
+      }
+      if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !e.altKey && !e.ctrlKey && !e.metaKey) {
+        const target = e.key === 'ArrowLeft' ? neighboursRef.current?.prev : neighboursRef.current?.next;
+        if (target != null && timerIdleRef.current) {
+          e.preventDefault();
+          dispatch({ type: 'SELECT_SCRAMBLE', id: target });
+        }
         return;
       }
       if (e.key === 'Delete') {
@@ -142,13 +173,23 @@ export function App() {
             <span className="md:hidden">{t.toolbar.scrambles}</span>
           </button>
           {!listOpen && (
-            <button
-              type="button"
-              onClick={() => dispatch({ type: 'ADD_SCRAMBLE', scramble: createScramble() })}
-              className={TOOLBAR_BUTTON}
-            >
-              <span aria-hidden="true" className="text-base leading-none">+</span> {t.toolbar.new}
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => dispatch({ type: 'ADD_SCRAMBLE', scramble: createScramble() })}
+                className={TOOLBAR_BUTTON}
+              >
+                <span aria-hidden="true" className="text-base leading-none">+</span> {t.toolbar.new}
+              </button>
+              <button
+                type="button"
+                onClick={() => dispatch(addSetAction(5))}
+                title={t.list.newSetTitle(5, 'Ao5')}
+                className={TOOLBAR_BUTTON}
+              >
+                <span aria-hidden="true" className="text-base leading-none">+</span> {t.toolbar.newSet}
+              </button>
+            </>
           )}
           <button
             type="button"
@@ -174,7 +215,11 @@ export function App() {
         <main
           className={`min-h-0 flex-1 overflow-y-auto transition-colors duration-150 ${running ? 'bg-green-800' : ''}`}
         >
-          <ScramblePanel timer={timer} />
+          {activeSet !== null ? (
+            <SetPanel set={activeSet} onDialogOpenChange={setDialogOpen} />
+          ) : (
+            <ScramblePanel timer={timer} inspection={inspection} onInspectionChange={setInspection} />
+          )}
         </main>
       </div>
 

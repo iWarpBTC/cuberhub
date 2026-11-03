@@ -38,3 +38,8 @@ export function generateScramble(): string {
 export function createScramble(): NewScramble {
   return { id: newId(), scramble: generateScramble(), createdAt: Date.now(), favorite: false };
 }
+
+/** `count` new scramble entities, in creation order. */
+export function createScrambles(count: number): NewScramble[] {
+  return Array.from({ length: count }, createScramble);
+}

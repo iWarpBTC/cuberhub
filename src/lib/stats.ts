@@ -3,12 +3,29 @@ import type { Penalty } from '../types';
 export interface TimedAttempt {
   timeMs: number;
   penalty: Penalty;
+  /** Penalty from the inspection; absent means none. */
+  inspectionPenalty?: Penalty;
 }
 
-/** Result time in ms with penalty applied, or null for a DNF. */
+export const PLUS2_MS = 2000;
+
+function penalties(attempt: TimedAttempt): Penalty[] {
+  return [attempt.penalty, attempt.inspectionPenalty ?? 'none'];
+}
+
+export function isDnf(attempt: TimedAttempt): boolean {
+  return penalties(attempt).includes('dnf');
+}
+
+/** Total +2 penalty in ms (WCA penalties are cumulative, A4d1 and 10e2), ignoring DNF. */
+export function penaltyMs(attempt: TimedAttempt): number {
+  return penalties(attempt).filter((p) => p === 'plus2').length * PLUS2_MS;
+}
+
+/** Result time in ms with all penalties applied, or null for a DNF. */
 export function effectiveMs(attempt: TimedAttempt): number | null {
-  if (attempt.penalty === 'dnf') return null;
-  return attempt.penalty === 'plus2' ? attempt.timeMs + 2000 : attempt.timeMs;
+  if (isDnf(attempt)) return null;
+  return attempt.timeMs + penaltyMs(attempt);
 }
 
 /** An average result: a time, DNF (too many DNF solves), or null (not enough solves). */
@@ -21,8 +38,6 @@ export interface ScrambleStats {
   mean: number | null;
   median: number | null;
   stdDev: number | null;
-  ao5: AverageResult;
-  ao12: AverageResult;
 }
 
 function validTimes(attempts: readonly TimedAttempt[]): number[] {
@@ -65,6 +80,32 @@ export function averageOfN(attempts: readonly TimedAttempt[], n: number): Averag
   return mean(kept);
 }
 
+/**
+ * WCA mean of the last n attempts: the plain mean, DNF as soon as any
+ * attempt is a DNF. Returns null when fewer than n attempts exist.
+ */
+export function meanOfN(attempts: readonly TimedAttempt[], n: number): AverageResult {
+  if (attempts.length < n) return null;
+  const window = attempts.slice(-n).map(effectiveMs);
+  if (window.some((t) => t === null)) return 'dnf';
+  return mean(window as number[]);
+}
+
+/**
+ * The competition result of a whole round of `attempts`: a trimmed average
+ * (Ao5, Ao12, …) from five attempts up, a plain mean (Mo3, …) below that.
+ */
+export function roundAverage(attempts: readonly TimedAttempt[]): AverageResult {
+  const n = attempts.length;
+  if (n === 0) return null;
+  return n >= 5 ? averageOfN(attempts, n) : meanOfN(attempts, n);
+}
+
+/** "Ao5" / "Ao12" for five attempts and more, "Mo3" below that. */
+export function averageLabel(size: number): string {
+  return size >= 5 ? `Ao${size}` : `Mo${size}`;
+}
+
 /** All statistics for one scramble's attempts, in chronological order. */
 export function computeStats(attempts: readonly TimedAttempt[]): ScrambleStats {
   const times = validTimes(attempts);
@@ -75,7 +116,74 @@ export function computeStats(attempts: readonly TimedAttempt[]): ScrambleStats {
     mean: mean(times),
     median: median(times),
     stdDev: stdDev(times),
-    ao5: averageOfN(attempts, 5),
-    ao12: averageOfN(attempts, 12),
+  };
+}
+
+/** One round of a set: the k-th solve of every scramble, null where it is still missing. */
+export interface SetRound {
+  /** 1-based round number. */
+  index: number;
+  attempts: Array<TimedAttempt | null>;
+  complete: boolean;
+  /** The round's Ao/Mo result; null while the round is incomplete. */
+  average: AverageResult;
+}
+
+export interface SetStats {
+  /** Number of scrambles in the set. */
+  size: number;
+  /** Every started round, oldest first. */
+  rounds: SetRound[];
+  completedRounds: number;
+  /** The round the next solve belongs to: the first one some scramble has no solve in yet. */
+  currentRound: number;
+  /** Best result of a complete round; a time beats a DNF. */
+  bestAverage: AverageResult;
+  /** Result of the most recent complete round. */
+  lastAverage: AverageResult;
+  bestSingle: number | null;
+  solveCount: number;
+}
+
+/** Whether `a` is a better average than `b` (a time beats a DNF, nothing beats null). */
+function betterAverage(a: AverageResult, b: AverageResult): boolean {
+  if (a === null) return false;
+  if (b === null) return true;
+  if (a === 'dnf') return false;
+  return b === 'dnf' || a < b;
+}
+
+/**
+ * Statistics of a set, from each scramble's attempts in chronological order
+ * (in the set's scramble order). Round k pairs the k-th attempt of every
+ * scramble, as in a competition where each scramble is solved once per round.
+ */
+export function computeSetStats(attemptsPerScramble: readonly (readonly TimedAttempt[])[]): SetStats {
+  const size = attemptsPerScramble.length;
+  const counts = attemptsPerScramble.map((a) => a.length);
+  const roundCount = size === 0 ? 0 : Math.max(...counts);
+  const rounds: SetRound[] = [];
+  for (let k = 0; k < roundCount; k++) {
+    const attempts = attemptsPerScramble.map((a) => a[k] ?? null);
+    const complete = attempts.every((a) => a !== null);
+    rounds.push({
+      index: k + 1,
+      attempts,
+      complete,
+      average: complete ? roundAverage(attempts as TimedAttempt[]) : null,
+    });
+  }
+  const completed = rounds.filter((r) => r.complete);
+  const all = attemptsPerScramble.flat();
+  const times = validTimes(all);
+  return {
+    size,
+    rounds,
+    completedRounds: completed.length,
+    currentRound: (size === 0 ? 0 : Math.min(...counts)) + 1,
+    bestAverage: completed.reduce<AverageResult>((best, r) => (betterAverage(r.average, best) ? r.average : best), null),
+    lastAverage: completed.at(-1)?.average ?? null,
+    bestSingle: times.length > 0 ? Math.min(...times) : null,
+    solveCount: all.length,
   };
 }

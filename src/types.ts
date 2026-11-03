@@ -15,11 +15,39 @@ export interface Scramble {
 /** A scramble before the store has given it its number. */
 export type NewScramble = Omit<Scramble, 'number'>;
 
+/**
+ * A competition-style set of scrambles (typically five for an Ao5). Each
+ * scramble belongs to at most one set; `scrambleIds` keeps the set's order.
+ * The set's averages are computed per round: the k-th solve of every
+ * scramble in the set together forms round k.
+ */
+export interface ScrambleSet {
+  id: string;
+  createdAt: number;
+  /** Display number in "Set #n"; assigned once and kept when other sets are deleted. */
+  number: number;
+  scrambleIds: string[];
+  /** Optional user-given name; falls back to "Set #n" in the UI. */
+  title?: string;
+  notes?: string;
+}
+
+/** A set before the store has given it its number. */
+export type NewScrambleSet = Omit<ScrambleSet, 'number'>;
+
 export interface Solve {
   id: string;
   scrambleId: string;
   timeMs: number;
+  /** Penalty from the solve itself: a misaligned cube, timer handling, … */
   penalty: Penalty;
+  /**
+   * Penalty from the inspection (A4d: +2 when the solve starts after 15 s,
+   * DNF after 17 s). Set by the timer when inspection is on; absent for a
+   * solve timed without inspection. +2 penalties stack with `penalty`; a
+   * DNF in either makes the solve a DNF.
+   */
+  inspectionPenalty?: Penalty;
   createdAt: number;
   notes?: string;
 }
@@ -27,4 +55,5 @@ export interface Solve {
 export interface AppData {
   scrambles: Scramble[];
   solves: Solve[];
+  sets: ScrambleSet[];
 }
