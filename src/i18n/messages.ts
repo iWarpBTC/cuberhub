@@ -8,19 +8,32 @@ const en = {
   switchLanguage: 'Přepnout do češtiny',
 
   scrambleName: (n: number | string) => `Scramble #${n}`,
+  setName: (n: number | string) => `Set #${n}`,
   solveCount: (n: number) => `${n} ${n === 1 ? 'solve' : 'solves'}`,
+  scrambleCount: (n: number) => `${n} ${n === 1 ? 'scramble' : 'scrambles'}`,
+  roundCount: (n: number) => `${n} ${n === 1 ? 'round' : 'rounds'}`,
 
   toolbar: {
     scrambles: 'Scrambles',
     showList: 'Show scramble list',
     hideList: 'Hide scramble list',
     new: 'New',
+    newSet: 'Set of 5',
     cheatsheet: 'Cheatsheet',
     cheatsheetTitle: 'Moves and algorithms (?)',
   },
 
   list: {
-    newScramble: 'New Scramble',
+    newScramble: 'New scramble',
+    newSet: (size: number) => `Set of ${size}`,
+    newSetTitle: (size: number, label: string) => `New set of ${size} scrambles (${label})`,
+    group: 'Group…',
+    groupTitle: 'Put existing scrambles into a set',
+    groupHint: 'Tick the scrambles to group.',
+    groupTarget: 'Set to add to',
+    groupNew: 'New set',
+    groupConfirm: (n: number) => `Group (${n})`,
+    groupCancel: 'Done',
     search: 'Search title or moves…',
     sortLabel: 'Sort scrambles',
     sort: {
@@ -42,14 +55,24 @@ const en = {
     deleteMessage: (name: string, solves: number) =>
       `This deletes "${name}" and all ${solves} of its solves. This cannot be undone.`,
     deleteConfirm: 'Delete',
+    collapseSet: 'Collapse set',
+    expandSet: 'Expand set',
+    renameSet: 'Rename set',
+    deleteSet: 'Delete set',
+    deleteSetTitle: 'Delete set?',
+    deleteSetMessage: (name: string, scrambles: number, solves: number) =>
+      `This deletes "${name}" with its ${scrambles} scrambles and all ${solves} of their solves. To keep the scrambles, dissolve the set instead. This cannot be undone.`,
+    deleteSetConfirm: 'Delete',
+    removeFromSet: 'Remove from set',
+    selectForGroup: 'Select for grouping',
   },
 
   importExport: {
     export: 'Export JSON',
     import: 'Import JSON',
     title: 'Import data?',
-    message: (scrambles: number, solves: number, newScrambles: number, newSolves: number) =>
-      `This replaces everything currently stored (${scrambles} scrambles, ${solves} solves) with the imported file (${newScrambles} scrambles, ${newSolves} solves).`,
+    message: (scrambles: number, solves: number, sets: number, newScrambles: number, newSolves: number, newSets: number) =>
+      `This replaces everything currently stored (${scrambles} scrambles, ${solves} solves, ${sets} sets) with the imported file (${newScrambles} scrambles, ${newSolves} solves, ${newSets} sets).`,
     confirm: 'Import',
     errors: {
       'not-json': 'Not a valid JSON file.',
@@ -64,12 +87,43 @@ const en = {
 
   panel: {
     noneSelected: 'No scramble selected. Pick one from the list, or start a new one.',
-    shortcut: 'Shortcut:',
+    shortcut: 'Shortcuts:',
+    newScrambleShortcut: 'new scramble',
+    newSetShortcut: 'new set of 5',
     netLabel: 'Scrambled cube net',
     statistics: 'Statistics',
     notes: 'Notes',
     notesPlaceholder: 'Notes about this scramble…',
     history: 'Solve history',
+    inSet: (position: number, size: number) => `scramble ${position} of ${size}`,
+    showSet: 'Show the set',
+    previousScramble: 'Previous scramble in the set',
+    nextScramble: 'Next scramble in the set',
+    round: (k: number) => `Round ${k}`,
+    lastRound: 'last round',
+  },
+
+  set: {
+    scrambles: 'Scrambles',
+    completedRounds: 'Rounds',
+    bestAverage: (label: string) => `Best ${label}`,
+    lastAverage: (label: string) => `Last ${label}`,
+    bestSingle: 'Best single',
+    solves: 'Solves',
+    rounds: 'Rounds',
+    roundsNote:
+      'As in a competition, each scramble is solved once per round: the k-th solve of every scramble makes up round k, and a complete round gets its average.',
+    noRounds: 'No solves yet. Open the first scramble and start solving; the set’s average appears once every scramble has a solve.',
+    round: 'Round',
+    bestRound: 'Best round',
+    open: 'Open',
+    addScramble: 'Add a scramble',
+    dissolve: 'Dissolve set',
+    dissolveTitle: 'Dissolve set?',
+    dissolveMessage: (name: string) =>
+      `"${name}" is removed. Its scrambles and their solves stay as standalone scrambles.`,
+    dissolveConfirm: 'Dissolve',
+    notesPlaceholder: 'Notes about this set…',
   },
 
   stats: {
@@ -79,8 +133,6 @@ const en = {
     average: 'Average',
     median: 'Median',
     stdDev: 'Std Dev',
-    ao5: 'Ao5',
-    ao12: 'Ao12',
   },
 
   history: {
@@ -93,7 +145,8 @@ const en = {
     delete: 'Delete solve',
   },
 
-  timerHint: (phase: TimerPhase, touch: boolean): string => {
+  /** `inspection`: whether a solve begins with a WCA inspection (changes the idle hint). */
+  timerHint: (phase: TimerPhase, touch: boolean, inspection: boolean): string => {
     switch (phase) {
       case 'running':
         return touch ? 'Tap anywhere to stop' : 'Press Space or click anywhere to stop';
@@ -101,9 +154,18 @@ const en = {
         return 'Release to start';
       case 'holding':
         return 'Keep holding…';
+      case 'inspecting':
+        return touch ? 'Inspecting — touch and hold the timer, release to start' : 'Inspecting — hold Space, release to start';
       case 'idle':
+        if (inspection) return touch ? 'Tap the timer to start the inspection' : 'Press Space or tap the timer to start the inspection';
         return touch ? 'Touch and hold the timer, release to start' : 'Hold Space or click and hold the timer to start';
     }
+  },
+
+  inspection: {
+    label: 'WCA inspection (15 s)',
+    hint: '+2 when the solve starts after 15 s, DNF after 17 s',
+    cancel: 'Cancel inspection',
   },
 
   cheatsheet: {
@@ -141,19 +203,32 @@ const cs: Messages = {
   switchLanguage: 'Switch to English',
 
   scrambleName: (n) => `Zamíchání #${n}`,
+  setName: (n) => `Sada #${n}`,
   solveCount: (n) => `${n} složení`,
+  scrambleCount: (n) => `${n} zamíchání`,
+  roundCount: (n) => `${n} ${n === 1 ? 'kolo' : n >= 2 && n <= 4 ? 'kola' : 'kol'}`,
 
   toolbar: {
     scrambles: 'Zamíchání',
     showList: 'Zobrazit seznam zamíchání',
     hideList: 'Skrýt seznam zamíchání',
     new: 'Nové',
+    newSet: 'Pětice',
     cheatsheet: 'Tahák',
     cheatsheetTitle: 'Tahy a algoritmy (?)',
   },
 
   list: {
     newScramble: 'Nové zamíchání',
+    newSet: (size) => (size === 5 ? 'Pětice' : size === 12 ? 'Dvanáctka' : `Sada ${size}`),
+    newSetTitle: (size, label) => `Nová sada ${size} zamíchání (${label})`,
+    group: 'Seskupit…',
+    groupTitle: 'Seskupit existující zamíchání do sady',
+    groupHint: 'Zaškrtni zamíchání, která chceš seskupit.',
+    groupTarget: 'Přidat do sady',
+    groupNew: 'Nová sada',
+    groupConfirm: (n) => `Seskupit (${n})`,
+    groupCancel: 'Hotovo',
     search: 'Hledat název nebo tahy…',
     sortLabel: 'Řazení zamíchání',
     sort: {
@@ -175,14 +250,24 @@ const cs: Messages = {
     deleteMessage: (name, solves) =>
       `Smaže se „${name}“ a všech ${solves} jeho složení. Tuto akci nelze vrátit.`,
     deleteConfirm: 'Smazat',
+    collapseSet: 'Sbalit sadu',
+    expandSet: 'Rozbalit sadu',
+    renameSet: 'Přejmenovat sadu',
+    deleteSet: 'Smazat sadu',
+    deleteSetTitle: 'Smazat sadu?',
+    deleteSetMessage: (name, scrambles, solves) =>
+      `Smaže se „${name}“ včetně jejích ${scrambles} zamíchání a všech ${solves} složení. Pokud chceš zamíchání zachovat, sadu místo toho rozpusť. Tuto akci nelze vrátit.`,
+    deleteSetConfirm: 'Smazat',
+    removeFromSet: 'Vyjmout ze sady',
+    selectForGroup: 'Vybrat k seskupení',
   },
 
   importExport: {
     export: 'Export JSON',
     import: 'Import JSON',
     title: 'Importovat data?',
-    message: (scrambles, solves, newScrambles, newSolves) =>
-      `Vše, co je teď uložené (zamíchání: ${scrambles}, složení: ${solves}), se nahradí importovaným souborem (zamíchání: ${newScrambles}, složení: ${newSolves}).`,
+    message: (scrambles, solves, sets, newScrambles, newSolves, newSets) =>
+      `Vše, co je teď uložené (zamíchání: ${scrambles}, složení: ${solves}, sady: ${sets}), se nahradí importovaným souborem (zamíchání: ${newScrambles}, složení: ${newSolves}, sady: ${newSets}).`,
     confirm: 'Importovat',
     errors: {
       'not-json': 'Soubor není platný JSON.',
@@ -197,12 +282,43 @@ const cs: Messages = {
 
   panel: {
     noneSelected: 'Není vybrané žádné zamíchání. Vyber ho ze seznamu nebo začni nové.',
-    shortcut: 'Zkratka:',
+    shortcut: 'Zkratky:',
+    newScrambleShortcut: 'nové zamíchání',
+    newSetShortcut: 'nová pětice',
     netLabel: 'Síť zamíchané kostky',
     statistics: 'Statistiky',
     notes: 'Poznámky',
     notesPlaceholder: 'Poznámky k tomuto zamíchání…',
     history: 'Historie složení',
+    inSet: (position, size) => `zamíchání ${position} z ${size}`,
+    showSet: 'Zobrazit sadu',
+    previousScramble: 'Předchozí zamíchání v sadě',
+    nextScramble: 'Další zamíchání v sadě',
+    round: (k) => `${k}. kolo`,
+    lastRound: 'minulé kolo',
+  },
+
+  set: {
+    scrambles: 'Zamíchání',
+    completedRounds: 'Kola',
+    bestAverage: (label) => `Nejl. ${label}`,
+    lastAverage: (label) => `Posl. ${label}`,
+    bestSingle: 'Nejl. čas',
+    solves: 'Složení',
+    rounds: 'Kola',
+    roundsNote:
+      'Jako na soutěži se každé zamíchání v kole skládá jednou: k-té složení každého zamíchání tvoří k-té kolo a kompletní kolo dostane svůj průměr.',
+    noRounds: 'Zatím žádná složení. Otevři první zamíchání a začni skládat; průměr sady se objeví, jakmile má každé zamíchání aspoň jedno složení.',
+    round: 'Kolo',
+    bestRound: 'Nejlepší kolo',
+    open: 'Otevřít',
+    addScramble: 'Přidat zamíchání',
+    dissolve: 'Rozpustit sadu',
+    dissolveTitle: 'Rozpustit sadu?',
+    dissolveMessage: (name) =>
+      `„${name}“ se odstraní. Její zamíchání i jejich složení zůstanou jako samostatná zamíchání.`,
+    dissolveConfirm: 'Rozpustit',
+    notesPlaceholder: 'Poznámky k této sadě…',
   },
 
   stats: {
@@ -212,8 +328,6 @@ const cs: Messages = {
     average: 'Průměr',
     median: 'Medián',
     stdDev: 'Sm. odch.',
-    ao5: 'Ao5',
-    ao12: 'Ao12',
   },
 
   history: {
@@ -226,7 +340,7 @@ const cs: Messages = {
     delete: 'Smazat složení',
   },
 
-  timerHint: (phase, touch) => {
+  timerHint: (phase, touch, inspection) => {
     switch (phase) {
       case 'running':
         return touch ? 'Klepni kamkoli pro zastavení' : 'Zastav mezerníkem nebo kliknutím kamkoli';
@@ -234,9 +348,18 @@ const cs: Messages = {
         return 'Pusť pro start';
       case 'holding':
         return 'Drž dál…';
+      case 'inspecting':
+        return touch ? 'Inspekce – podrž prst na časovači a pusť pro start' : 'Inspekce – podrž mezerník a pusť pro start';
       case 'idle':
+        if (inspection) return touch ? 'Klepni na časovač pro start inspekce' : 'Stiskni mezerník nebo klepni na časovač pro start inspekce';
         return touch ? 'Podrž prst na časovači a pusť pro start' : 'Podrž mezerník nebo tlačítko myši na časovači a pusť pro start';
     }
+  },
+
+  inspection: {
+    label: 'Inspekce WCA (15 s)',
+    hint: '+2 při startu po 15 s, DNF po 17 s',
+    cancel: 'Zrušit inspekci',
   },
 
   cheatsheet: {

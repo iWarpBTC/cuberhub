@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import type { Penalty } from '../types';
-import { averageOfN, computeStats, effectiveMs, mean, median, stdDev } from './stats';
+import {
+  averageLabel,
+  averageOfN,
+  computeSetStats,
+  computeStats,
+  effectiveMs,
+  mean,
+  meanOfN,
+  median,
+  roundAverage,
+  stdDev,
+} from './stats';
 
 function attempt(timeMs: number, penalty: Penalty = 'none') {
   return { timeMs, penalty };
@@ -91,8 +102,6 @@ describe('computeStats', () => {
     expect(stats.mean).toBeNull();
     expect(stats.median).toBeNull();
     expect(stats.stdDev).toBeNull();
-    expect(stats.ao5).toBeNull();
-    expect(stats.ao12).toBeNull();
   });
 
   it('ignores DNFs for best/worst/mean but counts them in count', () => {
@@ -114,5 +123,91 @@ describe('computeStats', () => {
     expect(stats.count).toBe(2);
     expect(stats.best).toBeNull();
     expect(stats.mean).toBeNull();
+  });
+});
+
+describe('meanOfN / roundAverage / averageLabel', () => {
+  it('meanOfN is the plain mean and DNF on any DNF', () => {
+    expect(meanOfN([attempt(1000), attempt(2000), attempt(3000)], 3)).toBe(2000);
+    expect(meanOfN([attempt(1000), attempt(2000), attempt(3000, 'dnf')], 3)).toBe('dnf');
+    expect(meanOfN([attempt(1000)], 3)).toBeNull();
+  });
+
+  it('roundAverage trims from five attempts up and means below', () => {
+    const five = [10000, 11000, 12000, 13000, 50000].map((t) => attempt(t));
+    expect(roundAverage(five)).toBe(12000);
+    expect(roundAverage([attempt(1000), attempt(2000), attempt(6000)])).toBe(3000);
+    expect(roundAverage([attempt(1000), attempt(2000), attempt(6000, 'dnf')])).toBe('dnf');
+    expect(roundAverage([])).toBeNull();
+  });
+
+  it('labels averages the WCA way', () => {
+    expect(averageLabel(5)).toBe('Ao5');
+    expect(averageLabel(12)).toBe('Ao12');
+    expect(averageLabel(3)).toBe('Mo3');
+  });
+});
+
+describe('computeSetStats', () => {
+  it('handles an empty set and a set without solves', () => {
+    const empty = computeSetStats([]);
+    expect(empty.size).toBe(0);
+    expect(empty.rounds).toEqual([]);
+    expect(empty.currentRound).toBe(1);
+    expect(empty.bestAverage).toBeNull();
+
+    const fresh = computeSetStats([[], [], [], [], []]);
+    expect(fresh.size).toBe(5);
+    expect(fresh.rounds).toEqual([]);
+    expect(fresh.completedRounds).toBe(0);
+    expect(fresh.currentRound).toBe(1);
+    expect(fresh.solveCount).toBe(0);
+  });
+
+  it('pairs the k-th solve of every scramble into round k', () => {
+    const stats = computeSetStats([
+      [attempt(10000), attempt(20000)],
+      [attempt(11000), attempt(21000)],
+      [attempt(12000)],
+      [attempt(13000)],
+      [attempt(50000)],
+    ]);
+    expect(stats.rounds).toHaveLength(2);
+    expect(stats.rounds[0]!.complete).toBe(true);
+    expect(stats.rounds[0]!.average).toBe(12000);
+    expect(stats.rounds[1]!.complete).toBe(false);
+    expect(stats.rounds[1]!.average).toBeNull();
+    expect(stats.rounds[1]!.attempts.map((a) => a?.timeMs ?? null)).toEqual([20000, 21000, null, null, null]);
+    expect(stats.completedRounds).toBe(1);
+    expect(stats.currentRound).toBe(2);
+    expect(stats.lastAverage).toBe(12000);
+    expect(stats.bestSingle).toBe(10000);
+    expect(stats.solveCount).toBe(7);
+  });
+
+  it('moves to the next round once every scramble has a solve in the current one', () => {
+    const stats = computeSetStats([[attempt(1000)], [attempt(1000)], [attempt(1000)]]);
+    expect(stats.currentRound).toBe(2);
+  });
+
+  it('picks the best complete round, a time beating a DNF', () => {
+    const round = (t: number, penalty: Penalty = 'none') => [attempt(t, penalty), attempt(t, penalty)];
+    const stats = computeSetStats([
+      [...round(20000), ...round(10000), ...round(30000, 'dnf')],
+      [...round(20000), ...round(10000), ...round(30000, 'dnf')],
+      [...round(20000), ...round(10000), ...round(30000)],
+      [...round(20000), ...round(10000), ...round(30000)],
+      [...round(20000), ...round(10000), ...round(30000)],
+    ]);
+    expect(stats.rounds.map((r) => r.average)).toEqual([20000, 20000, 10000, 10000, 'dnf', 'dnf']);
+    expect(stats.bestAverage).toBe(10000);
+    expect(stats.lastAverage).toBe('dnf');
+  });
+
+  it('is DNF for the best average when every complete round is a DNF', () => {
+    const dnf = attempt(1000, 'dnf');
+    const stats = computeSetStats([[dnf], [dnf], [attempt(1000)], [attempt(1000)], [attempt(1000)]]);
+    expect(stats.bestAverage).toBe('dnf');
+    expect(stats.bestSingle).toBe(1000);
   });
 });

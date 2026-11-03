@@ -5,6 +5,14 @@ The primary entity is the **scramble**: each scramble is a permanent object
 that can hold any number of solves, so you can practice the same scramble
 repeatedly and compare statistics per scramble.
 
+Scrambles can be grouped into a **set** (typically five, for an Ao5), which
+is where the competition statistics live: as in a competition, each scramble
+of a set is solved once per round, the k-th solve of every scramble forms
+round k, and every complete round gets its Ao5 (Ao12 for a set of twelve,
+Mo3 below five). A set can be generated whole ("Set of 5" / "Set of 12"),
+grown one scramble at a time, or made from existing scrambles with the
+"Group…" button in the list. Each scramble belongs to at most one set.
+
 ## Usage
 
 ```sh
@@ -19,15 +27,30 @@ npm run build    # typecheck + production build
 | Input | Action |
 | --- | --- |
 | Space, or press and hold the timer (hold, then release) | Start timer (turns green when ready) |
+| Tap Space or the timer (with inspection on) | Start the 15 s inspection; then hold and release as above to start the solve |
+| Esc (during inspection) | Abandon the inspection |
 | Space, or click / tap anywhere (while running) | Stop timer — the solve is stored automatically |
 | Delete | Delete the selected solve |
 | Ctrl+N | New scramble |
+| Ctrl+G | New set of 5 scrambles |
+| ← / → | Previous / next scramble within the set (while the timer is idle) |
 | Ctrl+F | Focus search |
 | ? | Open the cheatsheet |
 | Esc | Cancel dialog / close cheatsheet |
 
 While a solve is running the timer area turns green and the screen is kept on
 (Screen Wake Lock API; needs HTTPS or localhost, otherwise it is skipped).
+
+## Inspection
+
+The "WCA inspection (15 s)" checkbox under the timer (off by default, the
+choice is remembered) makes every solve start with a competition inspection:
+a tap of Space or of the timer starts a 15-second countdown, which turns
+yellow at the judge's "8 seconds" call and orange at "12 seconds". Holding
+and releasing then starts the solve as usual. Per WCA regulation A4d, a solve
+started more than 15 s into the inspection is recorded with +2, and one
+started after 17 s as DNF (the countdown shows "+2" and "DNF" in those
+windows). Esc or the "Cancel inspection" button abandons the inspection.
 
 The layout works on phones: the scramble list becomes a drawer (the
 "Scrambles" button), and on wide screens it can be collapsed with the same
@@ -59,13 +82,16 @@ The "Cheatsheet" button (or `?`) opens a reference with two tabs:
 
 - All data lives in browser Local Storage; every change is saved immediately.
 - Export/Import uses a versioned JSON format (`format: "rubik-timer", version: 1`).
-  Importing replaces all stored data after confirmation.
+  Importing replaces all stored data after confirmation. Files exported before
+  sets existed have no `sets` array and import as sets-free data.
 - Scrambles are random-move sequences (20 moves, WCA notation, no redundant
   consecutive faces). Swapping in a random-state generator later only requires
   replacing `src/lib/scramble.ts`.
 - Averages follow WCA rules: Ao5/Ao12 drop best and worst, a DNF counts as
-  worst, two DNFs make the average DNF. Best/worst/mean/median/stddev ignore
-  DNF solves; +2 penalties are included as time + 2s.
+  worst, two DNFs make the average DNF; Mo3 is a plain mean and DNF on any
+  DNF. They are computed per round of a set, never over repeats of one
+  scramble. Best/worst/mean/median/stddev of a single scramble ignore DNF
+  solves; +2 penalties are included as time + 2s.
 
 ## Architecture
 
@@ -75,6 +101,9 @@ The "Cheatsheet" button (or `?`) opens a reference with two tabs:
 - `src/i18n/` — language detection, the language context and UI strings.
 - `src/store/` — single reducer store (React context) persisted to Local
   Storage on every change.
-- `src/hooks/useTimer.ts` — the timer state machine (space bar and pointer).
-- `src/components/` — presentational components (scramble list, cube net,
-  stats, solve history, dialogs, import/export, cheatsheet and its diagrams).
+- `src/hooks/useTimer.ts` — the timer state machine (space bar and pointer,
+  with the optional inspection); `src/lib/inspection.ts` holds the WCA
+  inspection rules.
+- `src/components/` — presentational components (scramble list with its
+  sets, set panel with the rounds table, cube net, stats, solve history,
+  dialogs, import/export, cheatsheet and its diagrams).

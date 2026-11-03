@@ -1,13 +1,15 @@
-import type { AppData, Penalty, Scramble, Solve } from '../types';
+import type { AppData, Penalty, Scramble, ScrambleSet, Solve } from '../types';
 import type { Lang } from '../i18n/lang';
 import { isValidScramble } from './cube';
 
 const STORAGE_KEY = 'rubik-timer:data';
 const ACTIVE_SCRAMBLE_KEY = 'rubik-timer:active-scramble';
+const ACTIVE_SET_KEY = 'rubik-timer:active-set';
 const LIST_OPEN_KEY = 'rubik-timer:list-open';
 const LANG_KEY = 'rubik-timer:lang';
 const FAVORITE_ALGS_KEY = 'rubik-timer:favorite-algorithms';
 const FAVORITES_ONLY_KEY = 'rubik-timer:favorite-algorithms-only';
+const INSPECTION_KEY = 'rubik-timer:inspection';
 
 export const EXPORT_FORMAT = 'rubik-timer';
 export const EXPORT_VERSION = 1;
@@ -18,6 +20,8 @@ export interface ExportFile {
   exportedAt: string;
   scrambles: Scramble[];
   solves: Solve[];
+  /** Absent in files exported before sets existed. */
+  sets?: ScrambleSet[];
 }
 
 export type ImportErrorCode = 'not-json' | 'not-export' | 'version' | 'invalid-data';
@@ -32,8 +36,15 @@ export class ImportError extends Error {
 
 const PENALTIES: readonly Penalty[] = ['none', 'plus2', 'dnf'];
 
+export const EMPTY_DATA: AppData = { scrambles: [], solves: [], sets: [] };
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+/** A stored display number, or 0 when missing (data predating stored numbers). */
+function parseNumber(value: unknown): number {
+  return Number.isSafeInteger(value) && (value as number) > 0 ? (value as number) : 0;
 }
 
 /** A parsed scramble; `number` is 0 when the data predates stored numbers. */
@@ -47,7 +58,7 @@ function parseScramble(value: unknown): Scramble | null {
     id,
     scramble,
     createdAt,
-    number: Number.isSafeInteger(number) && (number as number) > 0 ? (number as number) : 0,
+    number: parseNumber(number),
     favorite: favorite === true,
   };
   if (typeof title === 'string' && title.length > 0) result.title = title;
@@ -75,19 +86,46 @@ function parseSolve(value: unknown, scrambleIds: ReadonlySet<string>): Solve | n
 }
 
 /**
- * Numbers scrambles saved before numbers were stored, continuing after the
+ * A parsed set. Unknown scramble ids, duplicates and scrambles already
+ * claimed by an earlier set are dropped (`claimed` is updated); a set left
+ * without scrambles is dropped altogether.
+ */
+function parseSet(value: unknown, scrambleIds: ReadonlySet<string>, claimed: Set<string>): ScrambleSet | null {
+  if (!isRecord(value)) return null;
+  const { id, createdAt, number, scrambleIds: members, title, notes } = value;
+  if (typeof id !== 'string' || id.length === 0) return null;
+  if (typeof createdAt !== 'number') return null;
+  if (!Array.isArray(members)) return null;
+  const ids: string[] = [];
+  for (const member of members) {
+    if (typeof member !== 'string' || !scrambleIds.has(member) || claimed.has(member)) continue;
+    claimed.add(member);
+    ids.push(member);
+  }
+  if (ids.length === 0) return null;
+  const result: ScrambleSet = { id, createdAt, number: parseNumber(number), scrambleIds: ids };
+  if (typeof title === 'string' && title.length > 0) result.title = title;
+  if (typeof notes === 'string' && notes.length > 0) result.notes = notes;
+  return result;
+}
+
+/**
+ * Numbers items saved before numbers were stored, continuing after the
  * highest number in use. For such data this matches the numbers shown before,
  * which were positions in creation order.
  */
-function assignMissingNumbers(scrambles: Scramble[]): void {
-  let next = scrambles.reduce((max, s) => Math.max(max, s.number), 0) + 1;
-  for (const s of scrambles) {
-    if (s.number === 0) s.number = next++;
+function assignMissingNumbers(items: Array<{ number: number }>): void {
+  let next = items.reduce((max, s) => Math.max(max, s.number), 0) + 1;
+  for (const item of items) {
+    if (item.number === 0) item.number = next++;
   }
 }
 
 function parseData(value: unknown): AppData {
   if (!isRecord(value) || !Array.isArray(value.scrambles) || !Array.isArray(value.solves)) {
+    throw new ImportError('invalid-data');
+  }
+  if (value.sets !== undefined && !Array.isArray(value.sets)) {
     throw new ImportError('invalid-data');
   }
   const scrambles = value.scrambles
@@ -100,16 +138,22 @@ function parseData(value: unknown): AppData {
     .map((s) => parseSolve(s, ids))
     .filter((s): s is Solve => s !== null)
     .sort((a, b) => a.createdAt - b.createdAt);
-  return { scrambles, solves };
+  const claimed = new Set<string>();
+  const sets = (value.sets ?? [])
+    .map((s: unknown) => parseSet(s, ids, claimed))
+    .filter((s: ScrambleSet | null): s is ScrambleSet => s !== null)
+    .sort((a: ScrambleSet, b: ScrambleSet) => a.createdAt - b.createdAt);
+  assignMissingNumbers(sets);
+  return { scrambles, solves, sets };
 }
 
 export function loadData(): AppData {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw === null) return { scrambles: [], solves: [] };
+    if (raw === null) return EMPTY_DATA;
     return parseData(JSON.parse(raw));
   } catch {
-    return { scrambles: [], solves: [] };
+    return EMPTY_DATA;
   }
 }
 
@@ -124,6 +168,15 @@ export function loadActiveScrambleId(): string | null {
 export function saveActiveScrambleId(id: string | null): void {
   if (id === null) localStorage.removeItem(ACTIVE_SCRAMBLE_KEY);
   else localStorage.setItem(ACTIVE_SCRAMBLE_KEY, id);
+}
+
+export function loadActiveSetId(): string | null {
+  return localStorage.getItem(ACTIVE_SET_KEY);
+}
+
+export function saveActiveSetId(id: string | null): void {
+  if (id === null) localStorage.removeItem(ACTIVE_SET_KEY);
+  else localStorage.setItem(ACTIVE_SET_KEY, id);
 }
 
 /** Whether the scramble list is shown on wide screens; defaults to shown. */
@@ -168,6 +221,15 @@ export function saveFavoritesOnly(only: boolean): void {
   localStorage.setItem(FAVORITES_ONLY_KEY, String(only));
 }
 
+/** Whether solves start with a WCA inspection; defaults to off. */
+export function loadInspection(): boolean {
+  return localStorage.getItem(INSPECTION_KEY) === 'true';
+}
+
+export function saveInspection(on: boolean): void {
+  localStorage.setItem(INSPECTION_KEY, String(on));
+}
+
 export function serializeExport(data: AppData): string {
   const file: ExportFile = {
     format: EXPORT_FORMAT,
@@ -175,6 +237,7 @@ export function serializeExport(data: AppData): string {
     exportedAt: new Date().toISOString(),
     scrambles: data.scrambles,
     solves: data.solves,
+    sets: data.sets,
   };
   return JSON.stringify(file, null, 2);
 }
