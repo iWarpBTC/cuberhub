@@ -20,10 +20,10 @@ export interface TimerPadHandlers {
   onContextMenu: (e: ReactMouseEvent<HTMLElement>) => void;
 }
 
-/** A finished solve: its time and the penalty earned during inspection. */
+/** A finished solve: its time and the penalty earned during inspection (null without inspection). */
 export interface SolveResult {
   elapsedMs: number;
-  penalty: Penalty;
+  inspectionPenalty: Penalty | null;
 }
 
 export interface TimerState {
@@ -85,8 +85,8 @@ export function useTimer(enabled: boolean, inspection: boolean, onStop: (result:
   const holdSourceRef = useRef<HoldSource | null>(null);
   const startedAtRef = useRef(0);
   const inspectionStartedAtRef = useRef<number | null>(null);
-  /** The penalty earned in the inspection of the solve now running. */
-  const penaltyRef = useRef<Penalty>('none');
+  /** The penalty earned in the inspection of the solve now running; null when it had none. */
+  const penaltyRef = useRef<Penalty | null>(null);
   /** A Space press / pad press that began in idle and will start the inspection when released. */
   const pendingInspectionRef = useRef<HoldSource | null>(null);
   const holdTimeoutRef = useRef<number | null>(null);
@@ -177,7 +177,7 @@ export function useTimer(enabled: boolean, inspection: boolean, onStop: (result:
     holdSourceRef.current = null;
     const now = performance.now();
     const inspectedMs = inspectionStartedAtRef.current === null ? null : now - inspectionStartedAtRef.current;
-    penaltyRef.current = inspectedMs === null ? 'none' : inspectionPenalty(inspectedMs);
+    penaltyRef.current = inspectedMs === null ? null : inspectionPenalty(inspectedMs);
     inspectionStartedAtRef.current = null;
     setInspectionMs(null);
     startedAtRef.current = now;
@@ -191,9 +191,9 @@ export function useTimer(enabled: boolean, inspection: boolean, onStop: (result:
     stopRafLoop();
     setDisplayMs(elapsed);
     setPhaseBoth('idle');
-    const penalty = penaltyRef.current;
-    penaltyRef.current = 'none';
-    onStopRef.current({ elapsedMs: elapsed, penalty });
+    const inspectionPenalty = penaltyRef.current;
+    penaltyRef.current = null;
+    onStopRef.current({ elapsedMs: elapsed, inspectionPenalty });
   }, [stopRafLoop, setPhaseBoth]);
 
   useEffect(() => {

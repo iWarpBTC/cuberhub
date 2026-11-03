@@ -1,5 +1,4 @@
-import type { Penalty } from '../types';
-import type { AverageResult } from './stats';
+import { effectiveMs, penaltyMs, type AverageResult, type TimedAttempt } from './stats';
 
 /** Formats milliseconds as "SS.cc" or "M:SS.cc", truncated to centiseconds. */
 export function formatMs(ms: number): string {
@@ -12,11 +11,11 @@ export function formatMs(ms: number): string {
   return minutes > 0 ? `${minutes}:${String(seconds).padStart(2, '0')}.${String(centis).padStart(2, '0')}` : secCs;
 }
 
-/** Formats a solve result including its penalty: "12.34", "14.34+" or "DNF". */
-export function formatResult(timeMs: number, penalty: Penalty): string {
-  if (penalty === 'dnf') return 'DNF';
-  if (penalty === 'plus2') return `${formatMs(timeMs + 2000)}+`;
-  return formatMs(timeMs);
+/** Formats a solve result including its penalties: "12.34", "14.34+" (any +2) or "DNF". */
+export function formatResult(attempt: TimedAttempt): string {
+  const ms = effectiveMs(attempt);
+  if (ms === null) return 'DNF';
+  return penaltyMs(attempt) > 0 ? `${formatMs(ms)}+` : formatMs(ms);
 }
 
 export function formatAverage(result: AverageResult): string {

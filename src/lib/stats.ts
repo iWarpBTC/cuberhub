@@ -3,12 +3,29 @@ import type { Penalty } from '../types';
 export interface TimedAttempt {
   timeMs: number;
   penalty: Penalty;
+  /** Penalty from the inspection; absent means none. */
+  inspectionPenalty?: Penalty;
 }
 
-/** Result time in ms with penalty applied, or null for a DNF. */
+export const PLUS2_MS = 2000;
+
+function penalties(attempt: TimedAttempt): Penalty[] {
+  return [attempt.penalty, attempt.inspectionPenalty ?? 'none'];
+}
+
+export function isDnf(attempt: TimedAttempt): boolean {
+  return penalties(attempt).includes('dnf');
+}
+
+/** Total +2 penalty in ms (WCA penalties are cumulative, A4d1 and 10e2), ignoring DNF. */
+export function penaltyMs(attempt: TimedAttempt): number {
+  return penalties(attempt).filter((p) => p === 'plus2').length * PLUS2_MS;
+}
+
+/** Result time in ms with all penalties applied, or null for a DNF. */
 export function effectiveMs(attempt: TimedAttempt): number | null {
-  if (attempt.penalty === 'dnf') return null;
-  return attempt.penalty === 'plus2' ? attempt.timeMs + 2000 : attempt.timeMs;
+  if (isDnf(attempt)) return null;
+  return attempt.timeMs + penaltyMs(attempt);
 }
 
 /** An average result: a time, DNF (too many DNF solves), or null (not enough solves). */

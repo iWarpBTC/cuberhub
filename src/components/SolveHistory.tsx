@@ -1,6 +1,7 @@
 import type { Penalty, Solve } from '../types';
 import { useDispatch, useStore } from '../store/StoreContext';
 import { formatDateTime, formatResult } from '../lib/format';
+import { isDnf } from '../lib/stats';
 import { useLanguage } from '../i18n/LanguageContext';
 
 const PENALTY_OPTIONS: Array<{ value: Penalty; label: string }> = [
@@ -9,24 +10,50 @@ const PENALTY_OPTIONS: Array<{ value: Penalty; label: string }> = [
   { value: 'dnf', label: 'DNF' },
 ];
 
-function PenaltyPicker({ solve }: { solve: Solve }) {
-  const dispatch = useDispatch();
+function PenaltyToggle({ value, onChange }: { value: Penalty; onChange: (penalty: Penalty) => void }) {
   return (
-    <div className="flex overflow-hidden rounded-md border border-neutral-700">
-      {PENALTY_OPTIONS.map(({ value, label }) => (
+    <div className="inline-flex overflow-hidden rounded-md border border-neutral-700">
+      {PENALTY_OPTIONS.map((option) => (
         <button
-          key={value}
+          key={option.value}
           type="button"
-          onClick={() => dispatch({ type: 'UPDATE_SOLVE', id: solve.id, patch: { penalty: value } })}
+          onClick={() => onChange(option.value)}
           className={`px-2 py-0.5 text-xs pointer-coarse:py-1.5 ${
-            solve.penalty === value
+            value === option.value
               ? 'bg-neutral-200 font-medium text-neutral-900'
               : 'text-neutral-400 hover:bg-neutral-800'
           }`}
         >
-          {label}
+          {option.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+/**
+ * Inspection and solve penalties are separate so that they stack the way
+ * WCA penalties do: +2 for a late start plus +2 for a one-move misalignment
+ * gives +4; a DNF in either row makes the solve a DNF. A solve timed
+ * without inspection has no inspection row.
+ */
+function PenaltyPicker({ solve }: { solve: Solve }) {
+  const { t } = useLanguage();
+  const dispatch = useDispatch();
+  const update = (patch: Partial<Pick<Solve, 'penalty' | 'inspectionPenalty'>>) =>
+    dispatch({ type: 'UPDATE_SOLVE', id: solve.id, patch });
+  if (solve.inspectionPenalty === undefined) {
+    return <PenaltyToggle value={solve.penalty} onChange={(penalty) => update({ penalty })} />;
+  }
+  return (
+    <div
+      className="grid w-fit grid-cols-[auto_auto] items-center gap-x-2 gap-y-1 text-[10px] uppercase tracking-wide text-neutral-500"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <span>{t.history.inspectionPenalty}</span>
+      <PenaltyToggle value={solve.inspectionPenalty} onChange={(inspectionPenalty) => update({ inspectionPenalty })} />
+      <span>{t.history.solvePenalty}</span>
+      <PenaltyToggle value={solve.penalty} onChange={(penalty) => update({ penalty })} />
     </div>
   );
 }
@@ -45,10 +72,10 @@ function SolveRow({ solve, index, selected }: { solve: Solve; index: number; sel
       <td className="px-2 py-1.5 text-xs text-neutral-500 sm:px-3">{index}</td>
       <td
         className={`px-2 py-1.5 font-mono text-sm sm:px-3 ${
-          solve.penalty === 'dnf' ? 'text-red-400' : 'text-neutral-100'
+          isDnf(solve) ? 'text-red-400' : 'text-neutral-100'
         }`}
       >
-        {formatResult(solve.timeMs, solve.penalty)}
+        {formatResult(solve)}
         <div className="whitespace-nowrap font-sans text-[10px] text-neutral-500 sm:hidden">{formatDateTime(solve.createdAt)}</div>
       </td>
       <td className="px-2 py-1.5 sm:px-3">

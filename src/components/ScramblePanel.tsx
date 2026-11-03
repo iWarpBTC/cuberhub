@@ -88,7 +88,7 @@ function SetBar({ scrambleId }: { scrambleId: string }) {
               }`}
             >
               <span className="mr-1 text-neutral-500">{i + 1}</span>
-              {attempt === undefined ? '—' : formatResult(attempt.timeMs, attempt.penalty)}
+              {attempt === undefined ? '—' : formatResult(attempt)}
             </button>
           );
         })}

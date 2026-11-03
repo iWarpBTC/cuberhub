@@ -66,7 +66,7 @@ export function App() {
   const modalOpenRef = useRef(modalOpen);
   modalOpenRef.current = modalOpen;
 
-  const timer = useTimer(!modalOpen && activeScrambleId !== null, inspection, ({ elapsedMs, penalty }) => {
+  const timer = useTimer(!modalOpen && activeScrambleId !== null, inspection, ({ elapsedMs, inspectionPenalty }) => {
     const scrambleId = activeScrambleIdRef.current;
     if (scrambleId === null) return;
     dispatch({
@@ -75,7 +75,8 @@ export function App() {
         id: newId(),
         scrambleId,
         timeMs: elapsedMs,
-        penalty,
+        penalty: 'none',
+        ...(inspectionPenalty === null ? {} : { inspectionPenalty }),
         createdAt: Date.now(),
       },
     });

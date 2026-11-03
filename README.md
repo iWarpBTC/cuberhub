@@ -52,6 +52,12 @@ started more than 15 s into the inspection is recorded with +2, and one
 started after 17 s as DNF (the countdown shows "+2" and "DNF" in those
 windows). Esc or the "Cancel inspection" button abandons the inspection.
 
+The inspection penalty is stored separately from the solve penalty (a
+misaligned cube, timer handling); the history shows both for solves timed
+with inspection and only the solve penalty for the others.
+As in WCA regulations, +2 penalties are cumulative: an inspection +2 and a
+one-move misalignment give +4. A DNF in either makes the solve a DNF.
+
 The layout works on phones: the scramble list becomes a drawer (the
 "Scrambles" button), and on wide screens it can be collapsed with the same
 button in the top bar.
@@ -91,7 +97,9 @@ The "Cheatsheet" button (or `?`) opens a reference with two tabs:
   worst, two DNFs make the average DNF; Mo3 is a plain mean and DNF on any
   DNF. They are computed per round of a set, never over repeats of one
   scramble. Best/worst/mean/median/stddev of a single scramble ignore DNF
-  solves; +2 penalties are included as time + 2s.
+  solves; +2 penalties (inspection and solve, cumulative) are included as
+  time + 2 s each. A solve has `inspectionPenalty` only when it was timed
+  with inspection; older exports have none.
 
 ## Architecture
 

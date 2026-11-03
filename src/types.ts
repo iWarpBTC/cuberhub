@@ -39,7 +39,15 @@ export interface Solve {
   id: string;
   scrambleId: string;
   timeMs: number;
+  /** Penalty from the solve itself: a misaligned cube, timer handling, … */
   penalty: Penalty;
+  /**
+   * Penalty from the inspection (A4d: +2 when the solve starts after 15 s,
+   * DNF after 17 s). Set by the timer when inspection is on; absent for a
+   * solve timed without inspection. +2 penalties stack with `penalty`; a
+   * DNF in either makes the solve a DNF.
+   */
+  inspectionPenalty?: Penalty;
   createdAt: number;
   notes?: string;
 }

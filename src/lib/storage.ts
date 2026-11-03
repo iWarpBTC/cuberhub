@@ -68,11 +68,15 @@ function parseScramble(value: unknown): Scramble | null {
 
 function parseSolve(value: unknown, scrambleIds: ReadonlySet<string>): Solve | null {
   if (!isRecord(value)) return null;
-  const { id, scrambleId, timeMs, penalty, createdAt, notes } = value;
+  const { id, scrambleId, timeMs, penalty, inspectionPenalty, createdAt, notes } = value;
   if (typeof id !== 'string' || id.length === 0) return null;
   if (typeof scrambleId !== 'string' || !scrambleIds.has(scrambleId)) return null;
   if (typeof timeMs !== 'number' || !Number.isFinite(timeMs) || timeMs < 0) return null;
   if (typeof penalty !== 'string' || !PENALTIES.includes(penalty as Penalty)) return null;
+  // Absent for solves timed without inspection (and in older exports).
+  if (inspectionPenalty !== undefined && (typeof inspectionPenalty !== 'string' || !PENALTIES.includes(inspectionPenalty as Penalty))) {
+    return null;
+  }
   if (typeof createdAt !== 'number') return null;
   const result: Solve = {
     id,
@@ -81,6 +85,7 @@ function parseSolve(value: unknown, scrambleIds: ReadonlySet<string>): Solve | n
     penalty: penalty as Penalty,
     createdAt,
   };
+  if (inspectionPenalty !== undefined) result.inspectionPenalty = inspectionPenalty as Penalty;
   if (typeof notes === 'string' && notes.length > 0) result.notes = notes;
   return result;
 }

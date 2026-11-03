@@ -48,7 +48,7 @@ export type Action =
   | { type: 'UPDATE_SET'; id: string; patch: Partial<Pick<ScrambleSet, 'title' | 'notes'>> }
   | { type: 'DELETE_SET'; id: string; deleteScrambles: boolean }
   | { type: 'ADD_SOLVE'; solve: Solve }
-  | { type: 'UPDATE_SOLVE'; id: string; patch: Partial<Pick<Solve, 'penalty' | 'notes'>> }
+  | { type: 'UPDATE_SOLVE'; id: string; patch: Partial<Pick<Solve, 'penalty' | 'inspectionPenalty' | 'notes'>> }
   | { type: 'DELETE_SOLVE'; id: string }
   | { type: 'SELECT_SOLVE'; id: string | null }
   | { type: 'IMPORT_DATA'; data: AppData };

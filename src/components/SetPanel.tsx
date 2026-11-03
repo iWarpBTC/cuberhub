@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { ScrambleSet } from '../types';
 import { useDispatch, useSolvesPerScramble, useStore } from '../store/StoreContext';
-import { averageLabel, computeSetStats } from '../lib/stats';
+import { averageLabel, computeSetStats, isDnf } from '../lib/stats';
 import { formatAverage, formatResult, formatStat } from '../lib/format';
 import { createScramble } from '../lib/scramble';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -107,12 +107,12 @@ export function SetPanel({
                             className={`rounded px-1 font-mono text-sm hover:bg-neutral-800 ${
                               attempt === null
                                 ? 'text-neutral-600'
-                                : attempt.penalty === 'dnf'
+                                : isDnf(attempt)
                                   ? 'text-red-400'
                                   : 'text-neutral-100'
                             }`}
                           >
-                            {attempt === null ? '—' : formatResult(attempt.timeMs, attempt.penalty)}
+                            {attempt === null ? '—' : formatResult(attempt)}
                           </button>
                         </td>
                       ))}

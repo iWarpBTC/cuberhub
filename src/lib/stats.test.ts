@@ -12,9 +12,10 @@ import {
   roundAverage,
   stdDev,
 } from './stats';
+import { formatResult } from './format';
 
-function attempt(timeMs: number, penalty: Penalty = 'none') {
-  return { timeMs, penalty };
+function attempt(timeMs: number, penalty: Penalty = 'none', inspectionPenalty?: Penalty) {
+  return { timeMs, penalty, inspectionPenalty };
 }
 
 describe('effectiveMs', () => {
@@ -26,6 +27,25 @@ describe('effectiveMs', () => {
   });
   it('returns null for DNF', () => {
     expect(effectiveMs(attempt(10000, 'dnf'))).toBeNull();
+  });
+  it('adds an inspection +2 on its own', () => {
+    expect(effectiveMs(attempt(10000, 'none', 'plus2'))).toBe(12000);
+  });
+  it('stacks an inspection +2 with a solve +2 (A4d1 + 10e2)', () => {
+    expect(effectiveMs(attempt(10000, 'plus2', 'plus2'))).toBe(14000);
+  });
+  it('returns null for an inspection DNF whatever the solve penalty', () => {
+    expect(effectiveMs(attempt(10000, 'none', 'dnf'))).toBeNull();
+    expect(effectiveMs(attempt(10000, 'plus2', 'dnf'))).toBeNull();
+  });
+});
+
+describe('formatResult', () => {
+  it('marks any +2 with a plus sign and shows DNF', () => {
+    expect(formatResult(attempt(10000))).toBe('10.00');
+    expect(formatResult(attempt(10000, 'plus2'))).toBe('12.00+');
+    expect(formatResult(attempt(10000, 'plus2', 'plus2'))).toBe('14.00+');
+    expect(formatResult(attempt(10000, 'none', 'dnf'))).toBe('DNF');
   });
 });
 

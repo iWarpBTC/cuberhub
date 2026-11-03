@@ -3,8 +3,8 @@ import { EXPORT_FORMAT, EXPORT_VERSION, parseImport } from './storage';
 
 const SEQUENCE = "R U R' U'";
 
-function exportJson(scrambles: object[], sets?: unknown): string {
-  return JSON.stringify({ format: EXPORT_FORMAT, version: EXPORT_VERSION, scrambles, solves: [], sets });
+function exportJson(scrambles: object[], sets?: unknown, solves: object[] = []): string {
+  return JSON.stringify({ format: EXPORT_FORMAT, version: EXPORT_VERSION, scrambles, solves, sets });
 }
 
 const THREE = [
@@ -89,5 +89,23 @@ describe('parseImport sets', () => {
 
   it('rejects a sets field that is not an array', () => {
     expect(() => parseImport(exportJson(THREE, 'nope'))).toThrow('invalid-data');
+  });
+});
+
+describe('parseImport solve penalties', () => {
+  const solve = { id: 's', scrambleId: 'a', timeMs: 10000, penalty: 'plus2', createdAt: 1 };
+
+  it('reads a solve without an inspection penalty as timed without inspection', () => {
+    expect(parseImport(exportJson(THREE, undefined, [solve])).solves).toEqual([solve]);
+  });
+
+  it('keeps an inspection penalty', () => {
+    const { solves } = parseImport(exportJson(THREE, undefined, [{ ...solve, inspectionPenalty: 'dnf' }]));
+    expect(solves[0]?.inspectionPenalty).toBe('dnf');
+  });
+
+  it('drops a solve with an unknown inspection penalty', () => {
+    const { solves } = parseImport(exportJson(THREE, undefined, [{ ...solve, inspectionPenalty: 'plus4' }]));
+    expect(solves).toEqual([]);
   });
 });
