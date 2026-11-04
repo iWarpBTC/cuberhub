@@ -14,5 +14,12 @@ export const CUBE_COLORS: Record<Face, string> = {
   L: '#ef4444', // red
 };
 
+/**
+ * The side faces going round the cube, each followed by the one on its right
+ * as seen when facing it (a y rotation brings that one in front): green,
+ * orange, blue, red.
+ */
+export const SIDE_FACES: readonly Face[] = ['F', 'R', 'B', 'L'];
+
 /** Stickers that don't matter for the case being shown. */
 export const DIM_COLOR = '#404040';

@@ -76,7 +76,10 @@ next to their data in `src/lib/algorithms.ts` and `src/lib/notation.ts`.
 The "Cheatsheet" button (or `?`) opens a reference with three tabs:
 
 - **Moves** — face turns, slice moves (M E S), wide moves and cube rotations,
-  each drawn for the plain, prime (') and half (2) turn.
+  each drawn for the plain, prime (') and half (2) turn. The small colour
+  band next to the introduction is the belt of side colours with white down
+  (blue, red, green, orange, round and round): facing any colour, the one on
+  your right is the next in the band. Hover it for the explanation.
 - **F2L** — all 41 F2L cases (numbered as on rubiksplace.com), grouped by
   where the corner and edge of the pair are, each with a picture, a
   face-turn-only algorithm and a one-line description of the position.

@@ -5,6 +5,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { F2L_CASES, F2L_GROUPS, LAST_LAYER_STICKERS, f2lCasePerm, type F2LCase } from '../lib/f2l';
 import { NOTATION, type NotationMove } from '../lib/notation';
 import { loadFavoriteAlgorithms, loadFavoritesOnly, saveFavoriteAlgorithms, saveFavoritesOnly } from '../lib/storage';
+import { CUBE_COLORS, SIDE_FACES } from '../lib/colors';
 import { CubeIso } from './CubeIso';
 import { F2LTrainer, useCaseDescription } from './F2LTrainer';
 import { LastLayerDiagram } from './LastLayerDiagram';
@@ -116,20 +117,53 @@ function MoveCard({ move, name, description, shape }: NotationMove) {
   );
 }
 
+/**
+ * The belt of side colours with white down, as a quiet reminder of which
+ * colour sits left and right of which: blue, red, green, orange, round and
+ * round (the faded ends show the belt continuing). Explained on hover.
+ */
+function ColorBand() {
+  const { t } = useLanguage();
+  const cells = [...SIDE_FACES.slice(2), ...SIDE_FACES, ...SIDE_FACES.slice(0, 2)].slice(0, 6);
+  return (
+    <div
+      role="img"
+      aria-label={t.cheatsheet.colorBand}
+      title={t.cheatsheet.colorBand}
+      className="shrink-0 self-center sm:self-start sm:pt-1"
+    >
+      <div className="mx-auto h-0.5 w-[70px] rounded-full" style={{ background: CUBE_COLORS.U }} />
+      <div className="my-1 flex gap-0.5">
+        {cells.map((face, i) => (
+          <span
+            key={i}
+            className={`h-4 w-4 rounded-sm${i === 0 || i === cells.length - 1 ? ' opacity-55' : ''}`}
+            style={{ background: CUBE_COLORS[face] }}
+          />
+        ))}
+      </div>
+      <div className="mx-auto h-0.5 w-[70px] rounded-full" style={{ background: CUBE_COLORS.D }} />
+    </div>
+  );
+}
+
 function MovesTab() {
   const { t, l } = useLanguage();
   const intro = t.cheatsheet.movesIntro;
   return (
     <div className="space-y-6">
-      <p className="text-sm text-neutral-400">
-        {intro.before}
-        <strong className="font-medium text-neutral-200">{intro.clockwise}</strong>
-        {intro.middle}
-        <span className="font-mono text-neutral-200">R'</span>
-        {intro.prime}
-        <span className="font-mono text-neutral-200">2</span>
-        {intro.after}
-      </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:gap-6">
+        <p className="text-sm text-neutral-400">
+          {intro.before}
+          <strong className="font-medium text-neutral-200">{intro.clockwise}</strong>
+          {intro.middle}
+          <span className="font-mono text-neutral-200">R'</span>
+          {intro.prime}
+          <span className="font-mono text-neutral-200">2</span>
+          {intro.after}
+        </p>
+        <ColorBand />
+      </div>
       {NOTATION.map((group) => (
         <section key={group.id}>
           <h3 className="text-xs uppercase tracking-wide text-neutral-500">{l(group.title)}</h3>

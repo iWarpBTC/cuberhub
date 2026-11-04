@@ -184,6 +184,8 @@ const en = {
       prime: ', “R prime”) turns it counterclockwise, a ',
       after: ' turns it twice (180°). Blue marks the layers that move.',
     },
+    colorBand:
+      'Side colours with white down, going round: blue, red, green, orange. Facing any colour, the one on your right is the next in the band, the one on your left the previous.',
     algorithmsIntro:
       'Pictures show the top layer from above (front at the bottom), yellow on top and green in front. Hold the cube like the picture, then do the algorithm; arrows show where pieces go. A move in parentheses at the end is the final turn of the top layer.',
     triggers: 'Triggers',
@@ -444,6 +446,8 @@ const cs: Messages = {
       prime: ', „R s čárkou“) ji otočí proti směru, ',
       after: ' dvakrát (o 180°). Modře jsou vrstvy, které se pohnou.',
     },
+    colorBand:
+      'Barvy stran při bílé dole, dokola: modrá, červená, zelená, oranžová. Když se díváš na kteroukoli barvu, napravo od ní je další v pásu, nalevo předchozí.',
     algorithmsIntro:
       'Obrázky ukazují horní vrstvu shora (přední strana dole), žlutá nahoře a zelená vpředu. Drž kostku jako na obrázku a proveď algoritmus; šipky ukazují, kam se kostičky přesunou. Tah v závorce na konci je závěrečné otočení horní vrstvy.',
     triggers: 'Triggery',
