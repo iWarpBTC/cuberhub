@@ -138,6 +138,57 @@ transforms in `src/components/Cube3D.tsx`, using the sticker geometry of
 `src/lib/geometry.ts` (checked against the facelet simulation for every
 move).
 
+## Dry practice
+
+The "Dry practice" button (Czech "Sušení") next to the cheatsheet opens a
+set of trainers for the cross inspection that need no cube in your hands:
+everything happens on the 3D cube, and every answer is checked by the cube
+simulation. The cube is held white down, so the cross goes into the bottom
+layer; drag the cube or use "From above" / "From below" to look around it.
+
+- **Edge Hunter** — the cube is scrambled; find the white edge you are
+  asked for (white-green, white-orange, …) and tap its white sticker.
+  Tapping the edge's coloured sticker is half right. The first level greys
+  everything but the white edges and the centres; later levels colour the
+  whole cube and give you less time.
+- **Edge Tracker** — memorize where one to four marked edges are, then the
+  cube hides and shows a few moves; tap the place where the white sticker
+  of each edge ends up. The result shows where each edge really is and can
+  replay the moves on the cube. "Memorizing time" in the bar can override
+  the level's limit.
+- **Mini Cross** — solve one to three marked edges into the bottom layer
+  with the move buttons or keys, in as few moves as you can. The task ends
+  the moment the edges are in; the result compares your count with the
+  optimum and replays an optimal solution (or yours).
+- **Cross Challenge** — inspect the position and plan the whole white cross,
+  then the cube hides and you enter the planned moves. You are judged on
+  whether the cross is solved, on the move count against the optimum and
+  on the inspection time. "Inspection time" in the bar can override the
+  level's limit (including unlimited).
+
+Every mode has levels that get harder (more edges, more moves, harder
+positions, tighter time) and adapt to you: three right in a row move you up,
+three wrong in a row move you down, and the ◀ ▶ buttons pick a level by
+hand. A result scores 100 for a correct answer (less for a partly correct
+one), up to 50 more for speed, 50 for an optimal cross (15 less per extra
+move), and is multiplied by the streak before it and by the level; a hint
+(H: marks the white edges, peeks at the hidden cube, or names an optimal
+first move) halves it. Points, streaks, personal bests (best score, fastest
+time, optimal solutions) and the last hundred results are kept per mode in
+this browser (not in the export file). "Same position again" repeats a task;
+Enter goes on, Esc goes back.
+
+Positions of a wanted difficulty come from the solver: a random scramble is
+reduced to the level's optimal length by applying the first moves of its
+optimal solution, so the rest of the cube stays scrambled. The solver in
+`src/lib/cross.ts` is a breadth-first search over the positions and
+orientations of the tracked edges (190 080 states for the whole cross, a
+table computed once per edge set), so the optimum is exact;
+`src/lib/cross.test.ts` checks it against a brute-force search on short
+cases. Levels, scoring and the adaptive progress live in
+`src/lib/dryPractice.ts`, also unit-tested; the modes are the components in
+`src/components/dry/`.
+
 ## Notes
 
 - All data lives in browser Local Storage; every change is saved immediately.
@@ -159,8 +210,9 @@ move).
 ## Architecture
 
 - `src/lib/` — pure, unit-tested logic: scramble generation, facelet-level
-  cube simulation (net rendering and the cheatsheet), statistics, formatting,
-  storage, and the notation / algorithm data.
+  cube simulation (net rendering and the cheatsheet), the edge model and
+  optimal cross solver with the dry-practice levels and scoring, statistics,
+  formatting, storage, and the notation / algorithm data.
 - `src/i18n/` — language detection, the language context and UI strings.
 - `src/store/` — single reducer store (React context) persisted to Local
   Storage on every change.
@@ -169,5 +221,5 @@ move).
   inspection rules.
 - `src/components/` — presentational components (scramble list with its
   sets, set panel with the rounds table, cube net, stats, solve history,
-  dialogs, import/export, cheatsheet and its diagrams, the 3D cube and the
-  F2L trainer).
+  dialogs, import/export, cheatsheet and its diagrams, the 3D cube, the
+  F2L trainer and the dry-practice trainers in `components/dry/`).

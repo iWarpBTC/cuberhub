@@ -13,16 +13,16 @@ function randomInt(max: number): number {
 }
 
 /**
- * Generates a random-move WCA-notation 3x3x3 scramble: 20 moves, never the
- * same face twice in a row, and no face repeated with only its opposite
- * face in between (e.g. "R L R" is rejected).
+ * Generates a random-move WCA-notation 3x3x3 scramble: `length` moves (20
+ * by default), never the same face twice in a row, and no face repeated
+ * with only its opposite face in between (e.g. "R L R" is rejected).
  */
-export function generateScramble(): string {
+export function generateScramble(length: number = SCRAMBLE_LENGTH): string {
   const moves: string[] = [];
   let prev: Face | null = null;
   let prevPrev: Face | null = null;
 
-  while (moves.length < SCRAMBLE_LENGTH) {
+  while (moves.length < length) {
     const face = FACES[randomInt(FACES.length)]!;
     if (face === prev) continue;
     if (prev !== null && prevPrev !== null && AXIS[face] === AXIS[prev] && face === prevPrev) continue;

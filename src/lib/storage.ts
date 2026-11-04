@@ -3,6 +3,17 @@ import type { Lang } from '../i18n/lang';
 import { isValidScramble } from './cube';
 import { F2L_CASES } from './f2l';
 import { parseFaceMove } from './f2lTrainer';
+import {
+  DRY_MODES,
+  clampLevel,
+  emptyDryPractice,
+  emptyProgress,
+  type DryMode,
+  type DryPracticeData,
+  type ModeProgress,
+  type TaskRecord,
+  type TimeSetting,
+} from './dryPractice';
 
 const STORAGE_KEY = 'rubik-timer:data';
 const ACTIVE_SCRAMBLE_KEY = 'rubik-timer:active-scramble';
@@ -12,6 +23,7 @@ const LANG_KEY = 'rubik-timer:lang';
 const FAVORITE_ALGS_KEY = 'rubik-timer:favorite-algorithms';
 const FAVORITES_ONLY_KEY = 'rubik-timer:favorite-algorithms-only';
 const INSPECTION_KEY = 'rubik-timer:inspection';
+const DRY_PRACTICE_KEY = 'rubik-timer:dry-practice';
 
 export const EXPORT_FORMAT = 'rubik-timer';
 export const EXPORT_VERSION = 1;
@@ -266,6 +278,76 @@ export function loadInspection(): boolean {
 
 export function saveInspection(on: boolean): void {
   localStorage.setItem(INSPECTION_KEY, String(on));
+}
+
+/** A finite number at least `min`, or null. */
+function finiteNumber(value: unknown, min = 0): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value >= min ? value : null;
+}
+
+function parseTaskRecord(value: unknown): TaskRecord | null {
+  if (!isRecord(value)) return null;
+  const at = finiteNumber(value.at);
+  const level = finiteNumber(value.level, 1);
+  const accuracy = finiteNumber(value.accuracy);
+  const timeMs = finiteNumber(value.timeMs);
+  const score = finiteNumber(value.score);
+  if (at === null || level === null || accuracy === null || timeMs === null || score === null) return null;
+  const record: TaskRecord = { at, level, accuracy, timeMs, score };
+  const moves = finiteNumber(value.moves);
+  const optimal = finiteNumber(value.optimal);
+  if (moves !== null && optimal !== null) {
+    record.moves = moves;
+    record.optimal = optimal;
+  }
+  return record;
+}
+
+function parseProgress(mode: DryMode, value: unknown): ModeProgress {
+  const empty = emptyProgress();
+  if (!isRecord(value)) return empty;
+  const count = (v: unknown) => Math.floor(finiteNumber(v) ?? 0);
+  return {
+    level: clampLevel(mode, finiteNumber(value.level, 1) ?? 1),
+    points: count(value.points),
+    attempts: count(value.attempts),
+    correct: count(value.correct),
+    streak: count(value.streak),
+    bestStreak: count(value.bestStreak),
+    recent: Array.isArray(value.recent) ? value.recent.filter((r): r is boolean => typeof r === 'boolean').slice(-5) : [],
+    bestScore: finiteNumber(value.bestScore),
+    bestTimeMs: finiteNumber(value.bestTimeMs),
+    optimalCount: count(value.optimalCount),
+    history: Array.isArray(value.history) ? value.history.map(parseTaskRecord).filter((r): r is TaskRecord => r !== null) : [],
+  };
+}
+
+function parseTimeSetting(value: unknown): TimeSetting {
+  if (value === null) return null;
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value;
+  return 'auto';
+}
+
+/** The dry-practice progress and settings; anything unreadable falls back to a fresh start. */
+export function loadDryPractice(): DryPracticeData {
+  try {
+    const raw = localStorage.getItem(DRY_PRACTICE_KEY);
+    if (raw === null) return emptyDryPractice();
+    const value: unknown = JSON.parse(raw);
+    if (!isRecord(value)) return emptyDryPractice();
+    const modes = isRecord(value.modes) ? value.modes : {};
+    const settings = isRecord(value.settings) ? value.settings : {};
+    return {
+      modes: Object.fromEntries(DRY_MODES.map((mode) => [mode, parseProgress(mode, modes[mode])])) as Record<DryMode, ModeProgress>,
+      settings: { memorize: parseTimeSetting(settings.memorize), inspection: parseTimeSetting(settings.inspection) },
+    };
+  } catch {
+    return emptyDryPractice();
+  }
+}
+
+export function saveDryPractice(data: DryPracticeData): void {
+  localStorage.setItem(DRY_PRACTICE_KEY, JSON.stringify(data));
 }
 
 export function serializeExport(data: AppData): string {

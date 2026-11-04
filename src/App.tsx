@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Cheatsheet, type CheatsheetTab } from './components/Cheatsheet';
+import { DryPractice } from './components/dry/DryPractice';
 import { ScrambleList } from './components/ScrambleList';
 import { ScramblePanel } from './components/ScramblePanel';
 import { SetPanel } from './components/SetPanel';
@@ -22,7 +23,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 const TOOLBAR_BUTTON =
-  'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100';
+  'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm whitespace-nowrap text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100';
 
 export function App() {
   const { t, lang, setLang } = useLanguage();
@@ -34,6 +35,7 @@ export function App() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [cheatsheetOpen, setCheatsheetOpen] = useState(false);
   const [cheatsheetTab, setCheatsheetTab] = useState<CheatsheetTab>('moves');
+  const [dryOpen, setDryOpen] = useState(false);
 
   // The list is a collapsible sidebar on wide screens (remembered) and a drawer on phones (closed by default).
   const wide = useMediaQuery(WIDE_QUERY);
@@ -43,6 +45,7 @@ export function App() {
   const setListOpen = useCallback((open: boolean) => (wide ? setSidebarOpen : setDrawerOpen)(open), [wide]);
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
   const closeCheatsheet = useCallback(() => setCheatsheetOpen(false), []);
+  const closeDry = useCallback(() => setDryOpen(false), []);
 
   useEffect(() => saveListOpen(sidebarOpen), [sidebarOpen]);
 
@@ -62,7 +65,7 @@ export function App() {
   }, [setOfActive, activeScrambleId]);
   const neighboursRef = useRef(neighbours);
   neighboursRef.current = neighbours;
-  const modalOpen = dialogOpen || cheatsheetOpen;
+  const modalOpen = dialogOpen || cheatsheetOpen || dryOpen;
   const modalOpenRef = useRef(modalOpen);
   modalOpenRef.current = modalOpen;
 
@@ -157,7 +160,7 @@ export function App() {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex shrink-0 items-center gap-1 border-b border-neutral-800 px-2 py-1.5">
+        <header className="flex shrink-0 flex-wrap items-center gap-1 border-b border-neutral-800 px-2 py-1.5">
           <button
             type="button"
             onClick={() => setListOpen(!listOpen)}
@@ -191,26 +194,43 @@ export function App() {
               </button>
             </>
           )}
-          <button
-            type="button"
-            onClick={() => setCheatsheetOpen(true)}
-            title={t.toolbar.cheatsheetTitle}
-            className={`${TOOLBAR_BUTTON} ml-auto`}
-          >
-            <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-              <path d="M3.75 4.5c2.25-.9 4.5-.9 6.25.5v11c-1.75-1.4-4-1.4-6.25-.5zM16.25 4.5c-2.25-.9-4.5-.9-6.25.5v11c1.75-1.4 4-1.4 6.25-.5z" strokeLinejoin="round" />
-            </svg>
-            {t.toolbar.cheatsheet}
-          </button>
-          <button
-            type="button"
-            onClick={() => setLang(lang === 'cs' ? 'en' : 'cs')}
-            aria-label={t.switchLanguage}
-            title={t.switchLanguage}
-            className={`${TOOLBAR_BUTTON} font-mono text-xs uppercase`}
-          >
-            {lang === 'cs' ? 'EN' : 'CZ'}
-          </button>
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setCheatsheetOpen(true)}
+              aria-label={t.toolbar.cheatsheet}
+              title={t.toolbar.cheatsheetTitle}
+              className={TOOLBAR_BUTTON}
+            >
+              <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                <path d="M3.75 4.5c2.25-.9 4.5-.9 6.25.5v11c-1.75-1.4-4-1.4-6.25-.5zM16.25 4.5c-2.25-.9-4.5-.9-6.25.5v11c1.75-1.4 4-1.4 6.25-.5z" strokeLinejoin="round" />
+              </svg>
+              <span className="hidden sm:inline">{t.toolbar.cheatsheet}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDryOpen(true)}
+              aria-label={t.toolbar.dryPractice}
+              title={t.toolbar.dryPracticeTitle}
+              className={TOOLBAR_BUTTON}
+            >
+              <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                <path d="M10 2.75l6.5 3.75v7l-6.5 3.75-6.5-3.75v-7z" strokeLinejoin="round" />
+                <path d="M10 10l6.5-3.5M10 10v7.25M10 10L3.5 6.5" strokeLinejoin="round" />
+                <circle cx="10" cy="10" r="1.6" fill="currentColor" stroke="none" />
+              </svg>
+              <span className="hidden sm:inline">{t.toolbar.dryPractice}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setLang(lang === 'cs' ? 'en' : 'cs')}
+              aria-label={t.switchLanguage}
+              title={t.switchLanguage}
+              className={`${TOOLBAR_BUTTON} font-mono text-xs uppercase`}
+            >
+              {lang === 'cs' ? 'EN' : 'CZ'}
+            </button>
+          </div>
         </header>
         <main
           className={`min-h-0 flex-1 overflow-y-auto transition-colors duration-150 ${running ? 'bg-green-800' : ''}`}
@@ -224,6 +244,7 @@ export function App() {
       </div>
 
       {cheatsheetOpen && <Cheatsheet tab={cheatsheetTab} onTabChange={setCheatsheetTab} onClose={closeCheatsheet} />}
+      {dryOpen && <DryPractice onClose={closeDry} />}
     </div>
   );
 }

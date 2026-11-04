@@ -26,13 +26,28 @@ const FACES = Object.keys(NORMALS) as Face[];
 /** Where the cube is seen from: shows the top, front and right faces. */
 export const DEFAULT_VIEW = { rx: -28, ry: -36 };
 
+/** A view from below: shows the bottom, front and right faces. */
+export const BOTTOM_VIEW = { rx: 28, ry: -36 };
+
+/** A pointer that moved less than this between down and up is a tap on a sticker. */
+const TAP_DISTANCE = 6;
+
 /**
  * A 3×3×3 cube drawn with CSS 3D transforms. Drag to look at it from
- * another side. `dim` lists the stickers (by solved position) to draw grey.
+ * another side. `dim` lists the stickers (by solved position) to draw grey;
+ * `hidden` greys the whole cube. `marks` outlines stickers by their current
+ * position, `pieceMarks` by their solved position (so an outline travels
+ * with its piece). With `onStickerClick`, a tap on one of the `clickable`
+ * positions (all of them when not given) reports its position.
  */
 export function Cube3D({
   perm,
   dim,
+  hidden = false,
+  marks,
+  pieceMarks,
+  clickable,
+  onStickerClick,
   turn,
   size,
   view,
@@ -41,6 +56,11 @@ export function Cube3D({
 }: {
   perm: Perm;
   dim?: ReadonlySet<number>;
+  hidden?: boolean;
+  marks?: ReadonlyMap<number, string>;
+  pieceMarks?: ReadonlyMap<number, string>;
+  clickable?: ReadonlySet<number>;
+  onStickerClick?: (index: number) => void;
   turn: Turn | null;
   /** Edge length of one cubie in px. */
   size: number;
@@ -60,6 +80,10 @@ export function Cube3D({
     },
     [view],
   );
+  const isClickable = useCallback(
+    (index: number) => onStickerClick !== undefined && (clickable === undefined || clickable.has(index)),
+    [onStickerClick, clickable],
+  );
   const onPointerMove = useCallback(
     (e: PointerEvent<HTMLDivElement>) => {
       const start = drag.current;
@@ -70,16 +94,28 @@ export function Cube3D({
     },
     [onViewChange],
   );
-  const onPointerUp = useCallback(() => {
-    drag.current = null;
-    setDragging(false);
-  }, []);
+  const onPointerUp = useCallback(
+    (e: PointerEvent<HTMLDivElement>) => {
+      const start = drag.current;
+      drag.current = null;
+      setDragging(false);
+      if (start === null || onStickerClick === undefined) return;
+      if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > TAP_DISTANCE) return;
+      // The pointer is captured, so the target is the cube; hit-test the stickers instead.
+      const hit = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>('[data-sticker]');
+      if (hit === null || hit === undefined) return;
+      const index = Number(hit.dataset.sticker);
+      if (isClickable(index)) onStickerClick(index);
+    },
+    [onStickerClick, isClickable],
+  );
 
   const box = size * 3;
   const stickerColor = (index: number) => {
     const original = perm[index]!;
-    return dim?.has(original) ? DIM_COLOR : CUBE_COLORS[faceOf(original)];
+    return hidden || dim?.has(original) ? DIM_COLOR : CUBE_COLORS[faceOf(original)];
   };
+  const markColor = (index: number) => marks?.get(index) ?? pieceMarks?.get(perm[index]!);
 
   return (
     <div
@@ -129,8 +165,13 @@ export function Cube3D({
                   <div key={face} className="absolute inset-0" style={faceStyle}>
                     {index >= 0 && (
                       <div
-                        className="absolute rounded-[12%]"
-                        style={{ inset: '6%', background: stickerColor(index) }}
+                        data-sticker={index}
+                        className={`absolute rounded-[12%] ${isClickable(index) ? 'cursor-pointer hover:brightness-125' : ''}`}
+                        style={{
+                          inset: '6%',
+                          background: stickerColor(index),
+                          boxShadow: markColor(index) !== undefined ? `inset 0 0 0 ${Math.max(2, size * 0.07)}px ${markColor(index)}` : undefined,
+                        }}
                       />
                     )}
                   </div>
