@@ -8,6 +8,7 @@ import { newId } from '../lib/id';
 import { useLanguage } from '../i18n/LanguageContext';
 import { scrambleName, setName } from '../i18n/names';
 import { ConfirmDialog } from './ConfirmDialog';
+import { CustomScrambleDialog } from './CustomScrambleDialog';
 import { ImportExport } from './ImportExport';
 
 export type SortOrder = 'newest' | 'oldest' | 'best-average' | 'most-solves' | 'favorites-first';
@@ -417,6 +418,12 @@ export function ScrambleList({
   const [grouping, setGrouping] = useState(false);
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
   const [groupTarget, setGroupTarget] = useState<string>('new');
+  const [customOpen, setCustomOpen] = useState(false);
+
+  const setCustomOpenBoth = (open: boolean) => {
+    setCustomOpen(open);
+    onDialogOpenChange(open);
+  };
 
   const setDeleteTargetBoth = (target: DeleteTarget | null) => {
     setDeleteTarget(target);
@@ -503,13 +510,23 @@ export function ScrambleList({
   return (
     <div className="flex h-full flex-col">
       <div className="space-y-2 border-b border-neutral-800 p-3">
-        <button
-          type="button"
-          onClick={handleNewScramble}
-          className="w-full rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500"
-        >
-          {t.list.newScramble}
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={handleNewScramble}
+            className="flex-1 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500"
+          >
+            {t.list.newScramble}
+          </button>
+          <button
+            type="button"
+            onClick={() => setCustomOpenBoth(true)}
+            title={t.list.customScrambleTitle}
+            className="rounded-md border border-neutral-700 px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-800"
+          >
+            {t.list.customScramble}
+          </button>
+        </div>
         <div className="flex gap-2">
           {SET_SIZES.map((size) => (
             <button
@@ -624,6 +641,7 @@ export function ScrambleList({
       </ul>
 
       <ImportExport onDialogOpenChange={onDialogOpenChange} />
+      {customOpen && <CustomScrambleDialog onSaved={onScrambleChosen} onClose={() => setCustomOpenBoth(false)} />}
 
       {deleteTarget?.kind === 'scramble' && (
         <ConfirmDialog

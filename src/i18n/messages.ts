@@ -26,6 +26,8 @@ const en = {
 
   list: {
     newScramble: 'New scramble',
+    customScramble: 'Own…',
+    customScrambleTitle: 'Type a scramble of your own',
     newSet: (size: number) => `Set of ${size}`,
     newSetTitle: (size: number, label: string) => `New set of ${size} scrambles (${label})`,
     group: 'Group…',
@@ -86,6 +88,21 @@ const en = {
 
   dialog: { cancel: 'Cancel' },
 
+  customScramble: {
+    title: 'Own scramble',
+    titleInSet: 'Own scramble for the set',
+    movesLabel: 'Moves',
+    movesPlaceholder: "R U R' U' …",
+    hint: "Face turns U D R L F B with ' or 2. Spaces, parentheses and lowercase don't matter; Enter saves.",
+    empty: 'Type the moves first.',
+    invalid: (token: string) => `Can't read “${token}”: only face turns (U D R L F B) are allowed.`,
+    moveCount: (n: number) => `${n} ${n === 1 ? 'move' : 'moves'}`,
+    savedAs: 'Saved as',
+    titleLabel: 'Name (optional)',
+    titlePlaceholder: 'e.g. Cross practice',
+    save: 'Save scramble',
+  },
+
   panel: {
     noneSelected: 'No scramble selected. Pick one from the list, or start a new one.',
     shortcut: 'Shortcuts:',
@@ -119,6 +136,7 @@ const en = {
     bestRound: 'Best round',
     open: 'Open',
     addScramble: 'Add a scramble',
+    addCustomScramble: 'Add own…',
     dissolve: 'Dissolve set',
     dissolveTitle: 'Dissolve set?',
     dissolveMessage: (name: string) =>
@@ -289,6 +307,8 @@ const cs: Messages = {
 
   list: {
     newScramble: 'Nové zamíchání',
+    customScramble: 'Vlastní…',
+    customScrambleTitle: 'Zadat vlastní zamíchání',
     newSet: (size) => (size === 5 ? 'Pětice' : size === 12 ? 'Dvanáctka' : `Sada ${size}`),
     newSetTitle: (size, label) => `Nová sada ${size} zamíchání (${label})`,
     group: 'Seskupit…',
@@ -349,6 +369,21 @@ const cs: Messages = {
 
   dialog: { cancel: 'Zrušit' },
 
+  customScramble: {
+    title: 'Vlastní zamíchání',
+    titleInSet: 'Vlastní zamíchání do sady',
+    movesLabel: 'Tahy',
+    movesPlaceholder: "R U R' U' …",
+    hint: 'Otočení stěn U D R L F B s čárkou nebo 2. Na mezerách, závorkách a malých písmenech nezáleží; Enter uloží.',
+    empty: 'Nejdřív zadej tahy.',
+    invalid: (token) => `Nerozumím „${token}“: povolené jsou jen otočení stěn (U D R L F B).`,
+    moveCount: (n) => `${n} ${n === 1 ? 'tah' : n < 5 ? 'tahy' : 'tahů'}`,
+    savedAs: 'Uloží se jako',
+    titleLabel: 'Název (nepovinný)',
+    titlePlaceholder: 'např. Trénink kříže',
+    save: 'Uložit zamíchání',
+  },
+
   panel: {
     noneSelected: 'Není vybrané žádné zamíchání. Vyber ho ze seznamu nebo začni nové.',
     shortcut: 'Zkratky:',
@@ -382,6 +417,7 @@ const cs: Messages = {
     bestRound: 'Nejlepší kolo',
     open: 'Otevřít',
     addScramble: 'Přidat zamíchání',
+    addCustomScramble: 'Přidat vlastní…',
     dissolve: 'Rozpustit sadu',
     dissolveTitle: 'Rozpustit sadu?',
     dissolveMessage: (name) =>

@@ -7,6 +7,7 @@ import { createScramble } from '../lib/scramble';
 import { useLanguage } from '../i18n/LanguageContext';
 import { scrambleName, setName } from '../i18n/names';
 import { ConfirmDialog } from './ConfirmDialog';
+import { CustomScrambleDialog } from './CustomScrambleDialog';
 
 const ACTION_BUTTON = 'rounded-md border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800';
 
@@ -22,6 +23,7 @@ export function SetPanel({
   const { scrambles } = useStore();
   const dispatch = useDispatch();
   const [dissolving, setDissolving] = useState(false);
+  const [customOpen, setCustomOpen] = useState(false);
   const solvesPerScramble = useSolvesPerScramble(set);
   const stats = useMemo(() => computeSetStats(solvesPerScramble), [solvesPerScramble]);
   const members = useMemo(
@@ -34,6 +36,10 @@ export function SetPanel({
 
   const setDissolvingBoth = (open: boolean) => {
     setDissolving(open);
+    onDialogOpenChange(open);
+  };
+  const setCustomOpenBoth = (open: boolean) => {
+    setCustomOpen(open);
     onDialogOpenChange(open);
   };
 
@@ -170,6 +176,9 @@ export function SetPanel({
           >
             <span aria-hidden="true">+</span> {t.set.addScramble}
           </button>
+          <button type="button" onClick={() => setCustomOpenBoth(true)} className={ACTION_BUTTON}>
+            <span aria-hidden="true">+</span> {t.set.addCustomScramble}
+          </button>
           <button type="button" onClick={() => setDissolvingBoth(true)} className={ACTION_BUTTON}>
             {t.set.dissolve}
           </button>
@@ -199,6 +208,7 @@ export function SetPanel({
           onCancel={() => setDissolvingBoth(false)}
         />
       )}
+      {customOpen && <CustomScrambleDialog setId={set.id} onClose={() => setCustomOpenBoth(false)} />}
     </div>
   );
 }

@@ -13,6 +13,12 @@ Mo3 below five). A set can be generated whole ("Set of 5" / "Set of 12"),
 grown one scramble at a time, or made from existing scrambles with the
 "Group…" button in the list. Each scramble belongs to at most one set.
 
+Scrambles are normally generated, but "Own…" next to "New scramble" (and
+"Add own…" in a set) takes one typed by hand: WCA face turns in any spacing,
+with parentheses, lowercase letters or typographic apostrophes allowed. The
+dialog shows the tidied moves and the resulting cube net as you type, names
+the first move it can't read, and takes an optional name for the scramble.
+
 ## Usage
 
 ```sh
@@ -139,8 +145,9 @@ move).
   Importing replaces all stored data after confirmation. Files exported before
   sets existed have no `sets` array and import as sets-free data.
 - Scrambles are random-move sequences (20 moves, WCA notation, no redundant
-  consecutive faces). Swapping in a random-state generator later only requires
-  replacing `src/lib/scramble.ts`.
+  consecutive faces) or typed by hand (`parseCustomScramble` tidies the input
+  into the same notation). Swapping in a random-state generator later only
+  requires replacing the generator in `src/lib/scramble.ts`.
 - Averages follow WCA rules: Ao5/Ao12 drop best and worst, a DNF counts as
   worst, two DNFs make the average DNF; Mo3 is a plain mean and DNF on any
   DNF. They are computed per round of a set, never over repeats of one
