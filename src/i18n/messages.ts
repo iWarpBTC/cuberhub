@@ -1,6 +1,7 @@
 import type { TimerPhase } from '../hooks/useTimer';
 import type { SortOrder } from '../components/ScrambleList';
 import type { ImportErrorCode } from '../lib/storage';
+import type { Face } from '../lib/cube';
 import type { Lang } from './lang';
 
 const en = {
@@ -195,6 +196,45 @@ const en = {
     markFavorite: 'Mark as favorite',
     removeFavorite: 'Remove from favorites',
     noFavorites: 'No favorites yet. Tap the ☆ on an algorithm to add it here.',
+    f2l: 'F2L',
+  },
+
+  f2l: {
+    intro:
+      'All 41 ways the corner and edge of one pair can sit in the top layer or in their slot, solved into the front-right slot with yellow on top and green in front. Grey pieces don’t matter. Tap a case to try it on the cube.',
+    caseName: (n: number) => `F2L ${n}`,
+    caseLabel: 'The case',
+    corner: 'Corner',
+    edge: 'Edge',
+    white: 'white',
+    green: 'green',
+    toward: {
+      U: 'up',
+      D: 'down',
+      F: 'to the front',
+      B: 'to the back',
+      R: 'to the right',
+      L: 'to the left',
+    } satisfies Record<Face, string>,
+    open: 'Try on the cube',
+    trainer: 'F2L trainer',
+    cubeLabel: 'The cube; drag to turn the view',
+    resetView: 'Reset view',
+    back: 'Back to the list',
+    prev: 'Previous case',
+    next: 'Next case',
+    moves: 'Moves',
+    undo: 'Undo',
+    restart: 'Restart',
+    solved: 'Solved!',
+    solvedHint: 'The pair is in. Restart the case or go on to the next one.',
+    progress: (done: number, total: number) => `${done} / ${total}`,
+    keysHint: 'Keys: R U F L B D turn a face, Shift turns it the other way, Backspace undoes, ← → change case, Esc closes.',
+    legend: {
+      done: 'done',
+      wrong: 'wrong, undo it',
+      next: 'next',
+    },
   },
 };
 
@@ -391,6 +431,45 @@ const cs: Messages = {
     markFavorite: 'Označit jako oblíbený',
     removeFavorite: 'Odebrat z oblíbených',
     noFavorites: 'Zatím žádné oblíbené. Klepni na ☆ u algoritmu a přidáš ho sem.',
+    f2l: 'F2L',
+  },
+
+  f2l: {
+    intro:
+      'Všech 41 situací, jak může roh a hrana jedné dvojice ležet v horní vrstvě nebo ve svém slotu; řeší se do pravého předního slotu, žlutá nahoře a zelená vpředu. Šedé kostičky nehrají roli. Klepnutím na situaci si ji vyzkoušíš na kostce.',
+    caseName: (n: number) => `F2L ${n}`,
+    caseLabel: 'Situace',
+    corner: 'Roh',
+    edge: 'Hrana',
+    white: 'bílá',
+    green: 'zelená',
+    toward: {
+      U: 'nahoru',
+      D: 'dolů',
+      F: 'dopředu',
+      B: 'dozadu',
+      R: 'doprava',
+      L: 'doleva',
+    } satisfies Record<Face, string>,
+    open: 'Vyzkoušet na kostce',
+    trainer: 'Trenažér F2L',
+    cubeLabel: 'Kostka; tažením otočíš pohled',
+    resetView: 'Výchozí pohled',
+    back: 'Zpět na seznam',
+    prev: 'Předchozí situace',
+    next: 'Další situace',
+    moves: 'Tahy',
+    undo: 'Zpět',
+    restart: 'Znovu',
+    solved: 'Vyřešeno!',
+    solvedHint: 'Dvojice je na místě. Zkus to znovu nebo přejdi na další situaci.',
+    progress: (done: number, total: number) => `${done} / ${total}`,
+    keysHint: 'Klávesy: R U F L B D otočí stěnu, se Shiftem opačným směrem, Backspace vrátí tah, ← → přepne situaci, Esc zavře.',
+    legend: {
+      done: 'hotovo',
+      wrong: 'špatně, vrať',
+      next: 'další',
+    },
   },
 };
 

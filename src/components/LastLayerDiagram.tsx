@@ -1,20 +1,7 @@
 import { useId, useMemo } from 'react';
 import type { Face } from '../lib/cube';
+import { CUBE_COLORS as LL_COLORS, DIM_COLOR as OLL_OTHER } from '../lib/colors';
 import { lastLayerCase } from '../lib/lastLayer';
-
-/**
- * Colors for a cube held yellow up, green front — the usual last-layer view.
- * The simulation's U face is the top, whatever color the scramble net uses.
- */
-const LL_COLORS: Record<Face, string> = {
-  U: '#facc15', // yellow
-  D: '#f1f5f9', // white
-  F: '#22c55e', // green
-  B: '#3b82f6', // blue
-  R: '#f97316', // orange
-  L: '#ef4444', // red
-};
-const OLL_OTHER = '#404040';
 
 const STICKER = 18;
 const GAP = 2;

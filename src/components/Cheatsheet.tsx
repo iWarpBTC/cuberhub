@@ -1,15 +1,86 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ALGORITHM_GROUPS, ALGORITHMS, TRIGGERS, type Algorithm } from '../lib/algorithms';
 import { useLanguage } from '../i18n/LanguageContext';
+import { F2L_CASES, F2L_GROUPS, LAST_LAYER_STICKERS, f2lCasePerm, type F2LCase } from '../lib/f2l';
 import { NOTATION, type NotationMove } from '../lib/notation';
 import { loadFavoriteAlgorithms, loadFavoritesOnly, saveFavoriteAlgorithms, saveFavoritesOnly } from '../lib/storage';
+import { CubeIso } from './CubeIso';
+import { F2LTrainer, useCaseDescription } from './F2LTrainer';
 import { LastLayerDiagram } from './LastLayerDiagram';
 import { MoveDiagram } from './MoveDiagram';
 
-export type CheatsheetTab = 'moves' | 'algorithms';
+export type CheatsheetTab = 'moves' | 'f2l' | 'algorithms';
 
-const TABS: readonly CheatsheetTab[] = ['moves', 'algorithms'];
+const TABS: readonly CheatsheetTab[] = ['moves', 'f2l', 'algorithms'];
+
+/** Favorite algorithm ids and the "favorites only" filter, remembered across sessions and shared by the tabs. */
+function useFavorites() {
+  const [favorites, setFavorites] = useState<ReadonlySet<string>>(() => new Set(loadFavoriteAlgorithms()));
+  const [favoritesOnly, setFavoritesOnly] = useState(loadFavoritesOnly);
+
+  useEffect(() => saveFavoriteAlgorithms([...favorites]), [favorites]);
+  useEffect(() => saveFavoritesOnly(favoritesOnly), [favoritesOnly]);
+
+  const toggleFavorite = (id: string) =>
+    setFavorites((current) => {
+      const next = new Set(current);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  return { favorites, favoritesOnly, setFavoritesOnly, toggleFavorite };
+}
+
+function FavoritesFilter({
+  favoritesOnly,
+  count,
+  onChange,
+}: {
+  favoritesOnly: boolean;
+  count: number;
+  onChange: (only: boolean) => void;
+}) {
+  const { t } = useLanguage();
+  const filters = [
+    { only: false, label: t.cheatsheet.showAll },
+    { only: true, label: `${t.cheatsheet.showFavorites} (${count})` },
+  ];
+  return (
+    <div role="group" aria-label={t.cheatsheet.filterLabel} className="inline-flex rounded-md border border-neutral-800 p-0.5">
+      {filters.map(({ only, label }) => (
+        <button
+          key={String(only)}
+          type="button"
+          aria-pressed={favoritesOnly === only}
+          onClick={() => onChange(only)}
+          className={`rounded px-3 py-1 text-sm ${
+            favoritesOnly === only ? 'bg-neutral-800 text-neutral-100' : 'text-neutral-400 hover:text-neutral-200'
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function FavoriteButton({ favorite, onToggle }: { favorite: boolean; onToggle: () => void }) {
+  const { t } = useLanguage();
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={favorite}
+      aria-label={favorite ? t.cheatsheet.removeFavorite : t.cheatsheet.markFavorite}
+      title={favorite ? t.cheatsheet.removeFavorite : t.cheatsheet.markFavorite}
+      className={`absolute top-1.5 right-1.5 rounded-md px-2 py-1 text-lg leading-none ${
+        favorite ? 'text-yellow-400' : 'text-neutral-600 hover:text-neutral-300'
+      }`}
+    >
+      {favorite ? '★' : '☆'}
+    </button>
+  );
+}
 
 function MoveCard({ move, name, description, shape }: NotationMove) {
   const { l } = useLanguage();
@@ -86,18 +157,7 @@ function AlgorithmCard({
   const { t, l, lang } = useLanguage();
   return (
     <li className="relative flex gap-3 rounded-lg border border-neutral-800 bg-neutral-900 p-3">
-      <button
-        type="button"
-        onClick={onToggleFavorite}
-        aria-pressed={favorite}
-        aria-label={favorite ? t.cheatsheet.removeFavorite : t.cheatsheet.markFavorite}
-        title={favorite ? t.cheatsheet.removeFavorite : t.cheatsheet.markFavorite}
-        className={`absolute top-1.5 right-1.5 rounded-md px-2 py-1 text-lg leading-none ${
-          favorite ? 'text-yellow-400' : 'text-neutral-600 hover:text-neutral-300'
-        }`}
-      >
-        {favorite ? '★' : '☆'}
-      </button>
+      <FavoriteButton favorite={favorite} onToggle={onToggleFavorite} />
       <LastLayerDiagram
         alg={algorithm.alg}
         kind={kind}
@@ -125,50 +185,103 @@ function AlgorithmCard({
   );
 }
 
+function F2LCard({
+  f2lCase,
+  favorite,
+  onToggleFavorite,
+  onOpen,
+}: {
+  f2lCase: F2LCase;
+  favorite: boolean;
+  onToggleFavorite: () => void;
+  onOpen: () => void;
+}) {
+  const { t } = useLanguage();
+  const perm = useMemo(() => f2lCasePerm(f2lCase.alg), [f2lCase.alg]);
+  const description = useCaseDescription(f2lCase.alg);
+  return (
+    <li className="relative rounded-lg border border-neutral-800 bg-neutral-900">
+      <FavoriteButton favorite={favorite} onToggle={onToggleFavorite} />
+      <button
+        type="button"
+        onClick={onOpen}
+        title={t.f2l.open}
+        className="flex w-full gap-3 rounded-lg p-3 text-left hover:bg-neutral-800/60"
+      >
+        <CubeIso perm={perm} dim={LAST_LAYER_STICKERS} label={t.f2l.caseLabel} className="h-20 w-20 shrink-0" />
+        <div className="min-w-0 pr-6">
+          <div className="font-medium text-neutral-100">{t.f2l.caseName(f2lCase.number)}</div>
+          <p className="mt-1.5 font-mono text-sm leading-relaxed text-neutral-100">{f2lCase.alg}</p>
+          <p className="mt-1 text-xs text-neutral-400">{description}</p>
+        </div>
+      </button>
+    </li>
+  );
+}
+
+function F2LTab() {
+  const { t, l } = useLanguage();
+  const { favorites, favoritesOnly, setFavoritesOnly, toggleFavorite } = useFavorites();
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  const favoriteCases = F2L_CASES.filter((c) => favorites.has(c.id));
+  const shown = favoritesOnly ? favoriteCases : F2L_CASES;
+  const openIndex = shown.findIndex((c) => c.id === openId);
+  const openCase = openIndex >= 0 ? shown[openIndex]! : null;
+  const closeTrainer = useCallback(() => setOpenId(null), []);
+
+  return (
+    <div className="space-y-6">
+      <p className="text-sm text-neutral-400">{t.f2l.intro}</p>
+      <FavoritesFilter favoritesOnly={favoritesOnly} count={favoriteCases.length} onChange={setFavoritesOnly} />
+      {favoritesOnly && shown.length === 0 && <p className="text-sm text-neutral-500">{t.cheatsheet.noFavorites}</p>}
+      {F2L_GROUPS.map((group) => {
+        const cases = shown.filter((c) => c.group === group.id);
+        if (cases.length === 0) return null;
+        return (
+          <section key={group.id}>
+            <h3 className="text-xs uppercase tracking-wide text-neutral-500">{l(group.title)}</h3>
+            <p className="mb-2 text-xs text-neutral-600">{l(group.note)}</p>
+            <ul className="grid gap-2 md:grid-cols-2">
+              {cases.map((c) => (
+                <F2LCard
+                  key={c.id}
+                  f2lCase={c}
+                  favorite={favorites.has(c.id)}
+                  onToggleFavorite={() => toggleFavorite(c.id)}
+                  onOpen={() => setOpenId(c.id)}
+                />
+              ))}
+            </ul>
+          </section>
+        );
+      })}
+      {openCase !== null && (
+        <F2LTrainer
+          key={openCase.id}
+          f2lCase={openCase}
+          favorite={favorites.has(openCase.id)}
+          onToggleFavorite={() => toggleFavorite(openCase.id)}
+          onPrev={openIndex > 0 ? () => setOpenId(shown[openIndex - 1]!.id) : null}
+          onNext={openIndex < shown.length - 1 ? () => setOpenId(shown[openIndex + 1]!.id) : null}
+          onClose={closeTrainer}
+        />
+      )}
+    </div>
+  );
+}
+
 function AlgorithmsTab() {
   const { t, l } = useLanguage();
-  const [favorites, setFavorites] = useState<ReadonlySet<string>>(() => new Set(loadFavoriteAlgorithms()));
-  const [favoritesOnly, setFavoritesOnly] = useState(loadFavoritesOnly);
-
-  useEffect(() => saveFavoriteAlgorithms([...favorites]), [favorites]);
-  useEffect(() => saveFavoritesOnly(favoritesOnly), [favoritesOnly]);
-
-  const toggleFavorite = (id: string) =>
-    setFavorites((current) => {
-      const next = new Set(current);
-      if (!next.delete(id)) next.add(id);
-      return next;
-    });
+  const { favorites, favoritesOnly, setFavoritesOnly, toggleFavorite } = useFavorites();
 
   const favoriteAlgorithms = ALGORITHMS.filter((a) => favorites.has(a.id));
   const shown = favoritesOnly ? favoriteAlgorithms : ALGORITHMS;
-  const filters = [
-    { only: false, label: t.cheatsheet.showAll },
-    { only: true, label: `${t.cheatsheet.showFavorites} (${favoriteAlgorithms.length})` },
-  ];
 
   return (
     <div className="space-y-6">
       <p className="text-sm text-neutral-400">{t.cheatsheet.algorithmsIntro}</p>
-      <div
-        role="group"
-        aria-label={t.cheatsheet.filterLabel}
-        className="inline-flex rounded-md border border-neutral-800 p-0.5"
-      >
-        {filters.map(({ only, label }) => (
-          <button
-            key={String(only)}
-            type="button"
-            aria-pressed={favoritesOnly === only}
-            onClick={() => setFavoritesOnly(only)}
-            className={`rounded px-3 py-1 text-sm ${
-              favoritesOnly === only ? 'bg-neutral-800 text-neutral-100' : 'text-neutral-400 hover:text-neutral-200'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <FavoritesFilter favoritesOnly={favoritesOnly} count={favoriteAlgorithms.length} onChange={setFavoritesOnly} />
       {favoritesOnly && shown.length === 0 && <p className="text-sm text-neutral-500">{t.cheatsheet.noFavorites}</p>}
       {!favoritesOnly && (
         <section>
@@ -276,7 +389,7 @@ export function Cheatsheet({
           </button>
         </div>
         <div key={tab} role="tabpanel" className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
-          {tab === 'moves' ? <MovesTab /> : <AlgorithmsTab />}
+          {tab === 'moves' ? <MovesTab /> : tab === 'f2l' ? <F2LTab /> : <AlgorithmsTab />}
         </div>
       </div>
     </div>,

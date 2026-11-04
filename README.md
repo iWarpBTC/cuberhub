@@ -73,16 +73,49 @@ next to their data in `src/lib/algorithms.ts` and `src/lib/notation.ts`.
 
 ## Cheatsheet
 
-The "Cheatsheet" button (or `?`) opens a reference with two tabs:
+The "Cheatsheet" button (or `?`) opens a reference with three tabs:
 
 - **Moves** — face turns, slice moves (M E S), wide moves and cube rotations,
   each drawn for the plain, prime (') and half (2) turn.
+- **F2L** — all 41 F2L cases (numbered as on rubiksplace.com), grouped by
+  where the corner and edge of the pair are, each with a picture, a
+  face-turn-only algorithm and a one-line description of the position.
+  Every case solves the pair into the front-right slot with yellow on top
+  and green in front; the other top-layer pieces are grey because they
+  don't matter. Tap a case to open the **F2L trainer** (below).
 - **Algorithms** — 2-look OLL and all 21 PLLs, with a picture of the case
-  each one solves. Star (☆) the ones you are learning and switch to
-  "Favorites" to see only those; both are remembered in this browser. The pictures are computed from the algorithms by the cube
-  simulation, and `src/lib/algorithms.test.ts` checks every algorithm keeps
-  the first two layers intact and solves the case its name and description
-  claim.
+  each one solves.
+
+Star (☆) the F2L cases and algorithms you are learning and switch to
+"Favorites" to see only those; both are remembered in this browser. All
+pictures are computed from the algorithms by the cube simulation:
+`src/lib/algorithms.test.ts` checks every OLL/PLL algorithm keeps the first
+two layers intact and solves the case its name claims, and
+`src/lib/f2l.test.ts` checks the 41 F2L algorithms use face turns only, leave
+the cross and the other three slots alone, and are the 41 distinct cases.
+
+### F2L trainer
+
+Opening an F2L case shows the position on a 3D cube (drag to look at it
+from another side) with the algorithm above the move buttons. Turn faces
+with the buttons or the keys `R U F L B D` (with Shift for the prime
+turn); every move is checked against the algorithm:
+
+- a move that follows the algorithm turns **green**;
+- any other move is inserted in **red** at the current position and has to
+  be undone (its inverse makes it disappear again; `R R` counts as `R2`,
+  and turns of the opposite face in between don't get in the way);
+- taking back the last correct move steps back instead of counting as a
+  wrong move.
+
+The case counts as solved as soon as the pair is in and the first two
+layers are intact, whichever way you got there. Backspace (or Z) undoes
+the last move, "Restart" resets the case, ← / → go to the previous / next
+case in the list and Esc goes back to the list. The trainer logic lives in
+`src/lib/f2lTrainer.ts` and is unit-tested; the cube is drawn with CSS 3D
+transforms in `src/components/Cube3D.tsx`, using the sticker geometry of
+`src/lib/geometry.ts` (checked against the facelet simulation for every
+move).
 
 ## Notes
 
@@ -114,4 +147,5 @@ The "Cheatsheet" button (or `?`) opens a reference with two tabs:
   inspection rules.
 - `src/components/` — presentational components (scramble list with its
   sets, set panel with the rounds table, cube net, stats, solve history,
-  dialogs, import/export, cheatsheet and its diagrams).
+  dialogs, import/export, cheatsheet and its diagrams, the 3D cube and the
+  F2L trainer).
