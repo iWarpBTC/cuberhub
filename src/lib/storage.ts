@@ -1,6 +1,8 @@
-import type { AppData, Penalty, Scramble, ScrambleSet, Solve } from '../types';
+import type { AppData, F2LSolution, Penalty, Scramble, ScrambleSet, Solve } from '../types';
 import type { Lang } from '../i18n/lang';
 import { isValidScramble } from './cube';
+import { F2L_CASES } from './f2l';
+import { parseFaceMove } from './f2lTrainer';
 
 const STORAGE_KEY = 'rubik-timer:data';
 const ACTIVE_SCRAMBLE_KEY = 'rubik-timer:active-scramble';
@@ -22,6 +24,8 @@ export interface ExportFile {
   solves: Solve[];
   /** Absent in files exported before sets existed. */
   sets?: ScrambleSet[];
+  /** Absent in files exported before F2L solutions existed. */
+  f2lSolutions?: F2LSolution[];
 }
 
 export type ImportErrorCode = 'not-json' | 'not-export' | 'version' | 'invalid-data';
@@ -36,7 +40,7 @@ export class ImportError extends Error {
 
 const PENALTIES: readonly Penalty[] = ['none', 'plus2', 'dnf'];
 
-export const EMPTY_DATA: AppData = { scrambles: [], solves: [], sets: [] };
+export const EMPTY_DATA: AppData = { scrambles: [], solves: [], sets: [], f2lSolutions: [] };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -114,6 +118,28 @@ function parseSet(value: unknown, scrambleIds: ReadonlySet<string>, claimed: Set
   return result;
 }
 
+const F2L_CASE_IDS = new Set(F2L_CASES.map((c) => c.id));
+
+/** True for a non-empty algorithm of face turns only, as the trainer needs it. */
+function isFaceTurnAlgorithm(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  const tokens = value.trim().split(/\s+/).filter(Boolean);
+  return tokens.length > 0 && tokens.every((token) => parseFaceMove(token) !== null);
+}
+
+function parseF2LSolution(value: unknown): F2LSolution | null {
+  if (!isRecord(value)) return null;
+  const { id, caseId, alg, source, note, createdAt } = value;
+  if (typeof id !== 'string' || id.length === 0) return null;
+  if (typeof caseId !== 'string' || !F2L_CASE_IDS.has(caseId)) return null;
+  if (!isFaceTurnAlgorithm(alg)) return null;
+  if (typeof createdAt !== 'number') return null;
+  const result: F2LSolution = { id, caseId, alg, createdAt };
+  if (typeof source === 'string' && source.length > 0) result.source = source;
+  if (typeof note === 'string' && note.length > 0) result.note = note;
+  return result;
+}
+
 /**
  * Numbers items saved before numbers were stored, continuing after the
  * highest number in use. For such data this matches the numbers shown before,
@@ -133,6 +159,9 @@ function parseData(value: unknown): AppData {
   if (value.sets !== undefined && !Array.isArray(value.sets)) {
     throw new ImportError('invalid-data');
   }
+  if (value.f2lSolutions !== undefined && !Array.isArray(value.f2lSolutions)) {
+    throw new ImportError('invalid-data');
+  }
   const scrambles = value.scrambles
     .map(parseScramble)
     .filter((s): s is Scramble => s !== null)
@@ -149,7 +178,11 @@ function parseData(value: unknown): AppData {
     .filter((s: ScrambleSet | null): s is ScrambleSet => s !== null)
     .sort((a: ScrambleSet, b: ScrambleSet) => a.createdAt - b.createdAt);
   assignMissingNumbers(sets);
-  return { scrambles, solves, sets };
+  const f2lSolutions = (value.f2lSolutions ?? [])
+    .map(parseF2LSolution)
+    .filter((s: F2LSolution | null): s is F2LSolution => s !== null)
+    .sort((a: F2LSolution, b: F2LSolution) => a.createdAt - b.createdAt);
+  return { scrambles, solves, sets, f2lSolutions };
 }
 
 export function loadData(): AppData {
@@ -243,6 +276,7 @@ export function serializeExport(data: AppData): string {
     scrambles: data.scrambles,
     solves: data.solves,
     sets: data.sets,
+    f2lSolutions: data.f2lSolutions,
   };
   return JSON.stringify(file, null, 2);
 }

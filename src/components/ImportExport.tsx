@@ -7,7 +7,7 @@ import { ConfirmDialog } from './ConfirmDialog';
 
 export function ImportExport({ onDialogOpenChange }: { onDialogOpenChange: (open: boolean) => void }) {
   const { t } = useLanguage();
-  const { scrambles, solves, sets } = useStore();
+  const { scrambles, solves, sets, f2lSolutions } = useStore();
   const dispatch = useDispatch();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingImport, setPendingImport] = useState<AppData | null>(null);
@@ -19,7 +19,7 @@ export function ImportExport({ onDialogOpenChange }: { onDialogOpenChange: (open
   };
 
   const handleExport = () => {
-    const json = serializeExport({ scrambles, solves, sets });
+    const json = serializeExport({ scrambles, solves, sets, f2lSolutions });
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

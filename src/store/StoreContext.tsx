@@ -7,7 +7,7 @@ import {
   type Dispatch,
   type ReactNode,
 } from 'react';
-import type { AppData, NewScramble, NewScrambleSet, Scramble, ScrambleSet, Solve } from '../types';
+import type { AppData, F2LSolution, NewScramble, NewScrambleSet, Scramble, ScrambleSet, Solve } from '../types';
 import { newId } from '../lib/id';
 import { createScrambles } from '../lib/scramble';
 import {
@@ -23,6 +23,7 @@ export interface StoreState {
   scrambles: Scramble[];
   solves: Solve[];
   sets: ScrambleSet[];
+  f2lSolutions: F2LSolution[];
   /** The scramble shown in the main panel; null when a set (or nothing) is shown. */
   activeScrambleId: string | null;
   /** The set shown in the main panel; only meaningful while no scramble is active. */
@@ -51,6 +52,8 @@ export type Action =
   | { type: 'UPDATE_SOLVE'; id: string; patch: Partial<Pick<Solve, 'penalty' | 'inspectionPenalty' | 'notes'>> }
   | { type: 'DELETE_SOLVE'; id: string }
   | { type: 'SELECT_SOLVE'; id: string | null }
+  | { type: 'ADD_F2L_SOLUTION'; solution: F2LSolution }
+  | { type: 'DELETE_F2L_SOLUTION'; id: string }
   | { type: 'IMPORT_DATA'; data: AppData };
 
 /** The action that creates a new set of `size` freshly generated scrambles. */
@@ -196,11 +199,16 @@ function reducer(state: StoreState, action: Action): StoreState {
       };
     case 'SELECT_SOLVE':
       return { ...state, selectedSolveId: action.id };
+    case 'ADD_F2L_SOLUTION':
+      return { ...state, f2lSolutions: [...state.f2lSolutions, action.solution] };
+    case 'DELETE_F2L_SOLUTION':
+      return { ...state, f2lSolutions: state.f2lSolutions.filter((s) => s.id !== action.id) };
     case 'IMPORT_DATA':
       return {
         scrambles: action.data.scrambles,
         solves: action.data.solves,
         sets: action.data.sets,
+        f2lSolutions: action.data.f2lSolutions,
         activeScrambleId: action.data.scrambles.at(-1)?.id ?? null,
         activeSetId: null,
         selectedSolveId: null,
@@ -228,8 +236,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
 
   useEffect(() => {
-    saveData({ scrambles: state.scrambles, solves: state.solves, sets: state.sets });
-  }, [state.scrambles, state.solves, state.sets]);
+    saveData({ scrambles: state.scrambles, solves: state.solves, sets: state.sets, f2lSolutions: state.f2lSolutions });
+  }, [state.scrambles, state.solves, state.sets, state.f2lSolutions]);
 
   useEffect(() => {
     saveActiveScrambleId(state.activeScrambleId);

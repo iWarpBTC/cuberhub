@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EXPORT_FORMAT, EXPORT_VERSION, parseImport } from './storage';
+import { EXPORT_FORMAT, EXPORT_VERSION, ImportError, parseImport } from './storage';
 
 const SEQUENCE = "R U R' U'";
 
@@ -45,6 +45,35 @@ describe('parseImport scramble numbers', () => {
       ]),
     );
     expect(data.scrambles.map((s) => s.number)).toEqual([6, 5]);
+  });
+});
+
+describe('parseImport F2L solutions', () => {
+  const file = (f2lSolutions: unknown) =>
+    JSON.stringify({ format: EXPORT_FORMAT, version: EXPORT_VERSION, scrambles: [], solves: [], f2lSolutions });
+
+  it('reads none from files exported before solutions existed', () => {
+    expect(parseImport(exportJson([])).f2lSolutions).toEqual([]);
+  });
+
+  it('keeps valid solutions in creation order and drops the rest', () => {
+    const data = parseImport(
+      file([
+        { id: 'b', caseId: 'f2l-35', alg: "U' R' F R F' R U' R'", source: "U' (R' F R F')", note: 'sledge', createdAt: 2 },
+        { id: 'a', caseId: 'f2l-1', alg: "R U R'", createdAt: 1 },
+        { id: 'c', caseId: 'f2l-99', alg: "R U R'", createdAt: 3 },
+        { id: 'd', caseId: 'f2l-1', alg: "y R U R'", createdAt: 4 },
+        { id: 'e', caseId: 'f2l-1', alg: "R U R'" },
+      ]),
+    );
+    expect(data.f2lSolutions).toEqual([
+      { id: 'a', caseId: 'f2l-1', alg: "R U R'", createdAt: 1 },
+      { id: 'b', caseId: 'f2l-35', alg: "U' R' F R F' R U' R'", source: "U' (R' F R F')", note: 'sledge', createdAt: 2 },
+    ]);
+  });
+
+  it('rejects a solutions field that is not an array', () => {
+    expect(() => parseImport(file('x'))).toThrow(ImportError);
   });
 });
 

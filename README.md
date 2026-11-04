@@ -109,7 +109,19 @@ turn); every move is checked against the algorithm:
   wrong move.
 
 The case counts as solved as soon as the pair is in and the first two
-layers are intact, whichever way you got there. Backspace (or Z) undoes
+layers are intact, whichever way you got there.
+
+**Your own solutions.** "Add a solution" in the trainer takes an algorithm
+in any notation (rotations `y`, wide moves `d`, slices, `Rw`, parentheses)
+and an optional note on how you remember it. The simulation checks it:
+rotations and wide moves are rewritten as face turns (both spellings stay
+visible), a turn of the top layer is added in front when the position
+needs one, and a solution that breaks another slot, doesn't solve the pair,
+is already there, or really solves a different case (then you can save it
+to that one instead) is refused with the reason. The trainer then follows
+every solution of the case at once and shows the one your moves match
+best; the chips above the notation pin one. Solutions are stored with the
+rest of your data in this browser and in the export file. Backspace (or Z) undoes
 the last move, "Restart" resets the case, ← / → go to the previous / next
 case in the list and Esc goes back to the list. The trainer logic lives in
 `src/lib/f2lTrainer.ts` and is unit-tested; the cube is drawn with CSS 3D

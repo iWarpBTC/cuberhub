@@ -52,8 +52,23 @@ export interface Solve {
   notes?: string;
 }
 
+/** A solution the user added to an F2L case of the cheatsheet. */
+export interface F2LSolution {
+  id: string;
+  /** Id of the F2L case, e.g. "f2l-35". */
+  caseId: string;
+  /** Face turns only, as the trainer follows it. */
+  alg: string;
+  /** The solution as the user wrote it, when that differs from `alg` (rotations, wide moves, slices, parentheses). */
+  source?: string;
+  /** How the user remembers it, e.g. "move the corner away, sledgehammer, insert". */
+  note?: string;
+  createdAt: number;
+}
+
 export interface AppData {
   scrambles: Scramble[];
   solves: Solve[];
   sets: ScrambleSet[];
+  f2lSolutions: F2LSolution[];
 }

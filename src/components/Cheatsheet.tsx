@@ -8,6 +8,8 @@ import { loadFavoriteAlgorithms, loadFavoritesOnly, saveFavoriteAlgorithms, save
 import { CubeIso } from './CubeIso';
 import { F2LTrainer, useCaseDescription } from './F2LTrainer';
 import { LastLayerDiagram } from './LastLayerDiagram';
+import { useDispatch, useStore } from '../store/StoreContext';
+import type { F2LSolution } from '../types';
 import { MoveDiagram } from './MoveDiagram';
 
 export type CheatsheetTab = 'moves' | 'f2l' | 'algorithms';
@@ -187,11 +189,13 @@ function AlgorithmCard({
 
 function F2LCard({
   f2lCase,
+  solutions,
   favorite,
   onToggleFavorite,
   onOpen,
 }: {
   f2lCase: F2LCase;
+  solutions: readonly F2LSolution[];
   favorite: boolean;
   onToggleFavorite: () => void;
   onOpen: () => void;
@@ -212,6 +216,15 @@ function F2LCard({
         <div className="min-w-0 pr-6">
           <div className="font-medium text-neutral-100">{t.f2l.caseName(f2lCase.number)}</div>
           <p className="mt-1.5 font-mono text-sm leading-relaxed text-neutral-100">{f2lCase.alg}</p>
+          {solutions.map((s) => (
+            <div key={s.id} className="mt-1 border-l-2 border-neutral-700 pl-2">
+              <p className="font-mono text-sm leading-relaxed text-neutral-300">{s.alg}</p>
+              {s.source !== undefined && (
+                <p className="font-mono text-xs text-neutral-500">{s.source}</p>
+              )}
+              {s.note !== undefined && <p className="text-xs italic text-neutral-500">{s.note}</p>}
+            </div>
+          ))}
           <p className="mt-1 text-xs text-neutral-400">{description}</p>
         </div>
       </button>
@@ -222,6 +235,8 @@ function F2LCard({
 function F2LTab() {
   const { t, l } = useLanguage();
   const { favorites, favoritesOnly, setFavoritesOnly, toggleFavorite } = useFavorites();
+  const { f2lSolutions } = useStore();
+  const dispatch = useDispatch();
   const [openId, setOpenId] = useState<string | null>(null);
 
   const favoriteCases = F2L_CASES.filter((c) => favorites.has(c.id));
@@ -247,6 +262,7 @@ function F2LTab() {
                 <F2LCard
                   key={c.id}
                   f2lCase={c}
+                  solutions={f2lSolutions.filter((s) => s.caseId === c.id)}
                   favorite={favorites.has(c.id)}
                   onToggleFavorite={() => toggleFavorite(c.id)}
                   onOpen={() => setOpenId(c.id)}
@@ -260,8 +276,11 @@ function F2LTab() {
         <F2LTrainer
           key={openCase.id}
           f2lCase={openCase}
+          solutions={f2lSolutions.filter((s) => s.caseId === openCase.id)}
           favorite={favorites.has(openCase.id)}
           onToggleFavorite={() => toggleFavorite(openCase.id)}
+          onAddSolution={(solution) => dispatch({ type: 'ADD_F2L_SOLUTION', solution })}
+          onDeleteSolution={(id) => dispatch({ type: 'DELETE_F2L_SOLUTION', id })}
           onPrev={openIndex > 0 ? () => setOpenId(shown[openIndex - 1]!.id) : null}
           onNext={openIndex < shown.length - 1 ? () => setOpenId(shown[openIndex + 1]!.id) : null}
           onClose={closeTrainer}

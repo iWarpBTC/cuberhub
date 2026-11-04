@@ -117,6 +117,9 @@ export function Cube3D({
             <div key={cubie.join()} className="absolute" style={cubieStyle}>
               {FACES.map((face) => {
                 const index = stickerAt(cubie, NORMALS[face]);
+                // Inner (black) faces only matter while a layer turns; at rest Safari
+                // sometimes paints them over the stickers in front of them.
+                if (index < 0 && turn === null) return null;
                 const faceStyle: CSSProperties = {
                   backfaceVisibility: 'hidden',
                   transform: `${FACE_ROTATION[face]} translateZ(${size / 2}px)`,
