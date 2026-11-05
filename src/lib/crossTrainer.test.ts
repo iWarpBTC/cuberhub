@@ -10,10 +10,12 @@ import {
   holdFront,
   holdMove,
   holdSpot,
+  scrambleWhiteDown,
   type MoveNote,
   type TrainerSolution,
 } from './crossTrainer';
-import { applyAlgorithm, applyAlgorithmTo, invertAlgorithm } from './cube';
+import { applyAlgorithm, applyAlgorithmTo, applyScramble, invertAlgorithm, type Face } from './cube';
+import { faceOf } from './geometry';
 import { generateScramble } from './scramble';
 
 const SCRAMBLES = [
@@ -23,8 +25,13 @@ const SCRAMBLES = [
   ...Array.from({ length: 25 }, () => generateScramble()),
 ];
 
-function solves(scramble: string, moves: readonly string[]): boolean {
-  return countSolved(applyMoves(permOf(scramble), moves), CROSS_EDGES) === 4;
+/** The position the trainer works on: the scramble done white up, the cube then turned white down. */
+function startOf(scramble: string): number[] {
+  return permOf(scrambleWhiteDown(scramble));
+}
+
+function solves(start: readonly number[], moves: readonly string[]): boolean {
+  return countSolved(applyMoves(start, moves), CROSS_EDGES) === 4;
 }
 
 /** In the bottom layer with white down, wherever round the ring. */
@@ -51,7 +58,7 @@ describe('CrossSolver.solutions', () => {
       for (const moves of all) {
         expect(moves.length).toBeGreaterThanOrEqual(previous);
         expect(moves.length).toBeLessThanOrEqual(optimal + 1);
-        expect(solves(scramble, moves)).toBe(true);
+        expect(solves(perm, moves)).toBe(true);
         previous = moves.length;
       }
       // Every listed shortest solution starts with a move the solver calls optimal.
@@ -72,14 +79,15 @@ describe('analyzeCross', () => {
     const solver = crossSolver(CROSS_EDGES);
     for (const scramble of SCRAMBLES) {
       const analysis = analyzeCross(scramble);
-      const optimal = solver.distance(permOf(scramble));
+      const optimal = solver.distance(startOf(scramble));
+      expect(analysis.perm).toEqual(startOf(scramble));
       expect(analysis.optimalLength).toBe(optimal);
       expect(analysis.shortest.moves).toHaveLength(optimal);
       expect(analysis.shortest.extra).toBe(0);
       expect(analysis.recommended.moves.length).toBeLessThanOrEqual(optimal + MAX_EXTRA);
       expect(analysis.recommended.metrics.cost).toBeLessThanOrEqual(analysis.shortest.metrics.cost);
       for (const solution of [analysis.shortest, analysis.recommended, ...analysis.alternatives]) {
-        expect(solves(scramble, solution.moves)).toBe(true);
+        expect(solves(analysis.perm, solution.moves)).toBe(true);
         expect(solution.metrics.cost).toBeGreaterThanOrEqual(analysis.recommended.metrics.cost);
       }
       // A longer recommendation has to say what it wins.
@@ -113,7 +121,7 @@ describe('analyzeCross', () => {
   it('only says what the position shows', () => {
     for (const scramble of SCRAMBLES) {
       const analysis = analyzeCross(scramble);
-      const start = permOf(scramble);
+      const start = startOf(scramble);
       for (const read of analysis.read.edges) {
         const location = locateEdge(start, read.edge);
         expect(read.spot).toEqual({ slot: location.slot, whiteFace: location.whiteFace });
@@ -177,8 +185,8 @@ describe('analyzeCross', () => {
   });
 
   it('reads a relative cross: the first edge goes anywhere, D matches the centres', () => {
-    // Undone by F (white-red drops in next to white-green) and then D' (the centres).
-    const analysis = analyzeCross("D F'");
+    // Held white down this is D F': undone by F (white-red drops in next to white-green) and then D' (the centres).
+    const analysis = analyzeCross("U F'");
     expect(analysis.optimalLength).toBe(2);
     expect(analysis.shortest.moves).toEqual(['F', "D'"]);
     const [insert, align] = analysis.shortest.steps;
@@ -199,9 +207,31 @@ describe('analyzeCross', () => {
   it('explains a solution typed by hand', () => {
     const scramble = SCRAMBLES[0]!;
     const analysis = analyzeCross(scramble);
-    const again = explainSolution(permOf(scramble), analysis.recommended.moves, analysis.optimalLength);
+    const again = explainSolution(analysis.perm, analysis.recommended.moves, analysis.optimalLength);
     expect(again).toEqual(analysis.recommended);
-    expect(() => explainSolution(permOf(scramble), ['R'])).toThrow();
+    expect(() => explainSolution(analysis.perm, ['R'])).toThrow();
+  });
+});
+
+describe('the scramble', () => {
+  // The colours of the timer's net (white up, green in front) and of the 3D cube (white down, green in front).
+  const NET: Record<Face, string> = { U: 'white', D: 'yellow', F: 'green', B: 'blue', R: 'red', L: 'orange' };
+  const CUBE: Record<Face, string> = { U: 'yellow', D: 'white', F: 'green', B: 'blue', R: 'orange', L: 'red' };
+
+  it('is done white up and green in front, then the cube is turned white down', () => {
+    expect(scrambleWhiteDown("R U' F2 D L B'")).toBe("L D' F2 U R B'");
+    for (const scramble of SCRAMBLES) {
+      // What the timer's net shows for the scramble, with the real cube then turned over (z2).
+      const turnedOver = applyAlgorithmTo(applyScramble(scramble), 'z2');
+      const { perm } = analyzeCross(scramble);
+      for (let i = 0; i < 54; i++) expect(CUBE[faceOf(perm[i]!)]).toBe(NET[turnedOver[i]!]);
+    }
+  });
+
+  it('puts the white centre down and keeps green in front', () => {
+    const { perm } = analyzeCross(SCRAMBLES[0]!);
+    expect(CUBE[faceOf(perm[31]!)]).toBe('white');
+    expect(CUBE[faceOf(perm[22]!)]).toBe('green');
   });
 });
 
@@ -240,8 +270,8 @@ describe('holds', () => {
     expect(shortest.handMoves).toEqual(["R'"]);
     expect(shortest.metrics).toMatchObject({ back: 0, front: 0 });
     expect(shortest.greenFront).toEqual({ back: 1, front: 0 });
-    // R' is as good as it gets: the cube stays as the scramble left it.
-    expect(analyzeCross('R').shortest).toMatchObject({ hold: 0, handMoves: ["R'"] });
+    // R' is as good as it gets: the cube stays as the scramble left it. (The scramble's L is the R of the cube turned over.)
+    expect(analyzeCross('L').shortest).toMatchObject({ hold: 0, handMoves: ["R'"] });
   });
 
   it('gives every solution the hold its turns are easiest in', () => {
@@ -256,7 +286,7 @@ describe('holds', () => {
         expect(metrics.front).toBe(handMoves.filter((move) => move[0] === 'F').length);
         // Turned in the hands of a cube rotated into the hold, the moves solve the cross.
         const rotation = HOLD_ROTATION[hold];
-        const done = applyAlgorithmTo([...permOf(scramble)], `${rotation} ${handMoves.join(' ')} ${rotation === '' ? '' : invertAlgorithm(rotation)}`);
+        const done = applyAlgorithmTo([...analysis.perm], `${rotation} ${handMoves.join(' ')} ${rotation === '' ? '' : invertAlgorithm(rotation)}`);
         expect(countSolved(done, CROSS_EDGES)).toBe(4);
         // No other hold is cheaper: turning the cube in inspection is free.
         const own = faceCost(handMoves);

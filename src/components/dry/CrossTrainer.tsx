@@ -709,6 +709,7 @@ export function CrossTrainer() {
             <div className="w-full min-w-0 sm:w-auto sm:flex-1">
               <div className="text-[10px] uppercase tracking-wide text-neutral-500">{tt.scramble}</div>
               <div className="font-mono text-sm text-neutral-100">{scramble}</div>
+              <div className="mt-0.5 text-xs text-neutral-500">{tt.scrambleHint}</div>
             </div>
             <div className="flex gap-1.5">
               <button type="button" onClick={next} className={SMALL_BUTTON}>

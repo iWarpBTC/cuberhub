@@ -47,6 +47,7 @@ import {
 } from './cross';
 import type { Perm } from './f2l';
 import { faceOf } from './geometry';
+import { withoutRotations } from './rotations';
 
 /** How an edge lies, as far as getting it into the cross goes. */
 export type EdgeClass = 'placed' | 'topUp' | 'middle' | 'topSide' | 'bottomSide';
@@ -622,9 +623,23 @@ export function explainSolution(perm: readonly number[], moves: readonly string[
   return solutionOf(trace, metricsOf(trace), optimal);
 }
 
-/** The shortest and the friendliest white cross for a scramble, with every move explained. */
+/**
+ * A scramble is turned the way the timer shows it (WCA): white up, green in
+ * front. For the cross the cube is then turned over, white down with green
+ * still in front (z2), which is how the 3D cube is drawn. These are the same
+ * turns named on the cube as it is held then: U and D swap, so do R and L.
+ */
+export function scrambleWhiteDown(scramble: string): string {
+  return withoutRotations(`z2 ${scramble}`).alg;
+}
+
+/**
+ * The shortest and the friendliest white cross for a scramble, with every
+ * move explained. The scramble is done white up, green in front, like every
+ * scramble in the app; `perm` is the cube turned over afterwards.
+ */
 export function analyzeCross(scramble: string): CrossAnalysis {
-  const perm = permOf(scramble);
+  const perm = permOf(scrambleWhiteDown(scramble));
   const start = startOf(perm);
   const solver = crossSolver(CROSS_EDGES);
   const optimalLength = solver.distance(perm);

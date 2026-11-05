@@ -194,7 +194,10 @@ cases. Levels, scoring and the adaptive progress live in
 The first tile of the dry-practice menu is a guide, not a game: no levels,
 no points. For a random scramble (or one you type) it shows the shortest
 white cross and the one a person would rather plan, and explains every move
-on the 3D cube.
+on the 3D cube. The scramble is done like every scramble in the app, white
+up and green in front; the cube is then turned over, white down with green
+still in front, and that is the cube the trainer shows
+(`scrambleWhiteDown`, checked sticker by sticker against the timer's net).
 
 - **Plan first.** The cube comes up alone; "Show the edges" then reads the
   position the way the cross guides teach it (each white edge is in the
