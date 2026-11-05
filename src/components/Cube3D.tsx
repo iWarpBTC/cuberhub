@@ -135,6 +135,8 @@ export function Cube3D({
           height: 0,
           transformStyle: 'preserve-3d',
           transform: `rotateX(${view.rx}deg) rotateY(${view.ry}deg)`,
+          // A view set from outside (a preset, another hold) turns smoothly; a drag follows the pointer.
+          transition: dragging ? 'none' : 'transform 350ms ease',
         }}
       >
         {CUBIES.map((cubie) => {

@@ -1,0 +1,268 @@
+import { describe, expect, it } from 'vitest';
+import { CROSS_EDGES, FACE_MOVES, applyMoves, countSolved, crossSolver, locateEdge, permOf, type CrossEdge } from './cross';
+import {
+  COST,
+  HOLDS,
+  HOLD_ROTATION,
+  MAX_EXTRA,
+  analyzeCross,
+  explainSolution,
+  holdFront,
+  holdMove,
+  holdSpot,
+  type MoveNote,
+  type TrainerSolution,
+} from './crossTrainer';
+import { applyAlgorithm, applyAlgorithmTo, invertAlgorithm } from './cube';
+import { generateScramble } from './scramble';
+
+const SCRAMBLES = [
+  "F' R D L2 F' D' R B' U' R U F2 R B U2 R2 D L2 D2 F",
+  "F U2 D2 B' D' R2 F' B2 D2 U' R B' F2 R2 L B U' R L2 U2",
+  "L' R' F' L' U2 R B' D' F' L F' R' F D R2 L U2 D B' F2",
+  ...Array.from({ length: 25 }, () => generateScramble()),
+];
+
+function solves(scramble: string, moves: readonly string[]): boolean {
+  return countSolved(applyMoves(permOf(scramble), moves), CROSS_EDGES) === 4;
+}
+
+/** In the bottom layer with white down, wherever round the ring. */
+function isPlaced(perm: readonly number[], edge: CrossEdge): boolean {
+  const { slot, flipped } = locateEdge(perm, edge);
+  return slot[0] === 'D' && !flipped;
+}
+
+function notes(solution: TrainerSolution): Array<{ index: number; note: MoveNote }> {
+  return solution.steps.flatMap((step) => step.moves.flatMap(({ index, notes }) => notes.map((note) => ({ index, note }))));
+}
+
+describe('CrossSolver.solutions', () => {
+  it('lists every solution up to the given length once, shortest first', () => {
+    const solver = crossSolver(CROSS_EDGES);
+    for (const scramble of SCRAMBLES.slice(0, 8)) {
+      const perm = permOf(scramble);
+      const optimal = solver.distance(perm);
+      const all = solver.solutions(perm, 1);
+      expect(all.length).toBeGreaterThan(0);
+      expect(all[0]!.length).toBe(optimal);
+      expect(new Set(all.map((moves) => moves.join(' '))).size).toBe(all.length);
+      let previous = 0;
+      for (const moves of all) {
+        expect(moves.length).toBeGreaterThanOrEqual(previous);
+        expect(moves.length).toBeLessThanOrEqual(optimal + 1);
+        expect(solves(scramble, moves)).toBe(true);
+        previous = moves.length;
+      }
+      // Every listed shortest solution starts with a move the solver calls optimal.
+      const firstMoves = new Set(solver.firstMoves(perm));
+      for (const moves of all) if (moves.length === optimal) expect(firstMoves.has(moves[0]!)).toBe(true);
+    }
+  });
+
+  it('gives the empty solution for a solved cross and respects the limit', () => {
+    const solver = crossSolver(CROSS_EDGES);
+    expect(solver.solutions(permOf('U'), 2)).toEqual([[]]);
+    expect(solver.solutions(permOf(SCRAMBLES[0]!), 2, 5)).toHaveLength(5);
+  });
+});
+
+describe('analyzeCross', () => {
+  it('finds a shortest and a recommended solution that both solve the cross', () => {
+    const solver = crossSolver(CROSS_EDGES);
+    for (const scramble of SCRAMBLES) {
+      const analysis = analyzeCross(scramble);
+      const optimal = solver.distance(permOf(scramble));
+      expect(analysis.optimalLength).toBe(optimal);
+      expect(analysis.shortest.moves).toHaveLength(optimal);
+      expect(analysis.shortest.extra).toBe(0);
+      expect(analysis.recommended.moves.length).toBeLessThanOrEqual(optimal + MAX_EXTRA);
+      expect(analysis.recommended.metrics.cost).toBeLessThanOrEqual(analysis.shortest.metrics.cost);
+      for (const solution of [analysis.shortest, analysis.recommended, ...analysis.alternatives]) {
+        expect(solves(scramble, solution.moves)).toBe(true);
+        expect(solution.metrics.cost).toBeGreaterThanOrEqual(analysis.recommended.metrics.cost);
+      }
+      // A longer recommendation has to say what it wins.
+      if (analysis.recommended === analysis.shortest) expect(analysis.reasons).toEqual([]);
+      else expect(analysis.recommended.moves.length).toBeGreaterThan(optimal);
+    }
+  });
+
+  it('cuts every solution into steps that cover its moves in order', () => {
+    for (const scramble of SCRAMBLES) {
+      const analysis = analyzeCross(scramble);
+      for (const solution of [analysis.shortest, analysis.recommended]) {
+        expect(solution.steps.flatMap((step) => step.moves.map((move) => move.move))).toEqual(solution.moves);
+        let at = 0;
+        for (const step of solution.steps) {
+          expect(step.start).toBe(at);
+          expect(step.end).toBeGreaterThan(step.start);
+          at = step.end;
+          if (step.kind === 'insert') expect(step.settles.length).toBeGreaterThan(0);
+          else expect(step.moves.at(-1)!.move[0]).toBe('D');
+        }
+        expect(at).toBe(solution.moves.length);
+        // Every edge is settled by exactly one step, or was right from the start.
+        const settled = solution.steps.flatMap((step) => step.settles);
+        const kept = CROSS_EDGES.filter((_, e) => solution.settledAt[e] === 0);
+        expect([...settled, ...kept].sort()).toEqual([...CROSS_EDGES].sort());
+      }
+    }
+  });
+
+  it('only says what the position shows', () => {
+    for (const scramble of SCRAMBLES) {
+      const analysis = analyzeCross(scramble);
+      const start = permOf(scramble);
+      for (const read of analysis.read.edges) {
+        const location = locateEdge(start, read.edge);
+        expect(read.spot).toEqual({ slot: location.slot, whiteFace: location.whiteFace });
+        expect(read.cls === 'placed').toBe(isPlaced(start, read.edge));
+        // A good edge's drop move really puts it into the bottom layer white down.
+        if (read.drop !== null) expect(isPlaced(applyMoves(start, [read.drop]), read.edge)).toBe(true);
+        else if (read.cls !== 'placed') {
+          for (const move of ['R', "R'", 'R2', 'L', "L'", 'L2', 'F', "F'", 'F2', 'B', "B'", 'B2', 'U', "U'", 'U2']) {
+            expect(isPlaced(applyMoves(start, [move]), read.edge)).toBe(false);
+          }
+        }
+      }
+      for (const solution of [analysis.shortest, analysis.recommended]) {
+        for (const { index, note } of notes(solution)) {
+          const before = applyMoves(start, solution.moves.slice(0, index));
+          const after = applyMoves(start, solution.moves.slice(0, index + 1));
+          switch (note.kind) {
+            case 'insert':
+              for (const edge of note.edges) {
+                expect(isPlaced(before, edge)).toBe(false);
+                // From here on the edge never leaves the bottom layer.
+                for (let k = index + 1; k <= solution.moves.length; k++) {
+                  expect(isPlaced(applyMoves(start, solution.moves.slice(0, k)), edge)).toBe(true);
+                }
+              }
+              for (const edge of note.relativeTo) expect(isPlaced(before, edge)).toBe(true);
+              break;
+            case 'ready': {
+              // The named turn would put the edge in for good: the rest of the cross then needs only D turns for it.
+              const dropped = applyMoves(after, [note.drop]);
+              expect(isPlaced(after, note.edge)).toBe(false);
+              expect(isPlaced(dropped, note.edge)).toBe(true);
+              expect(locateEdge(dropped, note.edge).slot).toBe(`D${note.side}`);
+              break;
+            }
+            case 'orient':
+            case 'move':
+            case 'takeOut':
+            case 'park': {
+              const location = locateEdge(after, note.edge);
+              expect(note.spot).toEqual({ slot: location.slot, whiteFace: location.whiteFace });
+              if (note.kind === 'takeOut') expect(isPlaced(before, note.edge)).toBe(true);
+              if (note.kind === 'park') expect(isPlaced(after, note.edge)).toBe(true);
+              break;
+            }
+            case 'lift':
+              expect(isPlaced(before, note.edge)).toBe(true);
+              expect(isPlaced(after, note.edge)).toBe(false);
+              expect(solution.moves[note.returns]).toBe(note.returnMove);
+              break;
+            case 'carry':
+              for (const edge of note.edges) expect(isPlaced(after, edge)).toBe(true);
+              break;
+            case 'align':
+              expect(countSolved(after, CROSS_EDGES)).toBe(4);
+              break;
+          }
+        }
+      }
+    }
+  });
+
+  it('reads a relative cross: the first edge goes anywhere, D matches the centres', () => {
+    // Undone by F (white-red drops in next to white-green) and then D' (the centres).
+    const analysis = analyzeCross("D F'");
+    expect(analysis.optimalLength).toBe(2);
+    expect(analysis.shortest.moves).toEqual(['F', "D'"]);
+    const [insert, align] = analysis.shortest.steps;
+    expect(insert!.kind).toBe('insert');
+    expect(insert!.moves[0]!.notes[0]).toMatchObject({ kind: 'insert', home: false });
+    expect(align!.kind).toBe('align');
+    expect(analysis.shortest.patterns.some((pattern) => pattern.kind === 'relative')).toBe(true);
+    expect(analysis.read.groups[0]).toHaveLength(3);
+  });
+
+  it('prefers an easier turn over a shorter solution only when it pays', () => {
+    // One turn solves it: nothing friendlier is worth two more moves.
+    const single = analyzeCross('B');
+    expect(single.recommended).toBe(single.shortest);
+    expect(single.shortest.moves).toEqual(["B'"]);
+  });
+
+  it('explains a solution typed by hand', () => {
+    const scramble = SCRAMBLES[0]!;
+    const analysis = analyzeCross(scramble);
+    const again = explainSolution(permOf(scramble), analysis.recommended.moves, analysis.optimalLength);
+    expect(again).toEqual(analysis.recommended);
+    expect(() => explainSolution(permOf(scramble), ['R'])).toThrow();
+  });
+});
+
+describe('holds', () => {
+  it('rewrites a move the way a rotated cube turns it', () => {
+    for (const hold of HOLDS) {
+      const rotation = HOLD_ROTATION[hold];
+      for (const move of FACE_MOVES) {
+        const inHand = rotation === '' ? holdMove(move, hold) : `${rotation} ${holdMove(move, hold)} ${invertAlgorithm(rotation)}`;
+        expect(applyAlgorithm(inHand)).toEqual(applyAlgorithm(move));
+      }
+    }
+    // Orange in front: the cube's R is the hands' F.
+    expect(holdFront(1)).toBe('R');
+    expect(holdMove("R'", 1)).toBe("F'");
+    expect(holdMove('U2', 1)).toBe('U2');
+    expect(holdSpot({ slot: 'FR', whiteFace: 'R' }, 1)).toEqual({ slot: 'FL', whiteFace: 'F' });
+  });
+
+  it('names a spot as it is on the rotated cube', () => {
+    const perm = permOf(SCRAMBLES[0]!);
+    for (const hold of HOLDS) {
+      const rotated = applyAlgorithmTo([...perm], HOLD_ROTATION[hold]);
+      for (const edge of CROSS_EDGES) {
+        const here = locateEdge(perm, edge);
+        const there = locateEdge(rotated, edge);
+        expect(holdSpot({ slot: here.slot, whiteFace: here.whiteFace }, hold)).toEqual({ slot: there.slot, whiteFace: there.whiteFace });
+      }
+    }
+  });
+
+  it('turns the cube instead of turning the back face', () => {
+    // B' with green in front; with orange in front the same turn is R'.
+    const { shortest } = analyzeCross('B');
+    expect(shortest.hold).toBe(1);
+    expect(shortest.handMoves).toEqual(["R'"]);
+    expect(shortest.metrics).toMatchObject({ back: 0, front: 0 });
+    expect(shortest.greenFront).toEqual({ back: 1, front: 0 });
+    // R' is as good as it gets: the cube stays as the scramble left it.
+    expect(analyzeCross('R').shortest).toMatchObject({ hold: 0, handMoves: ["R'"] });
+  });
+
+  it('gives every solution the hold its turns are easiest in', () => {
+    const faceCost = (moves: readonly string[]) => moves.reduce((sum, move) => sum + COST.face[move[0] as keyof typeof COST.face], 0);
+    for (const scramble of SCRAMBLES) {
+      const analysis = analyzeCross(scramble);
+      for (const solution of [analysis.shortest, analysis.recommended, ...analysis.alternatives]) {
+        const { hold, moves, handMoves, metrics } = solution;
+        expect(metrics.hold).toBe(hold);
+        expect(handMoves).toEqual(moves.map((move) => holdMove(move, hold)));
+        expect(metrics.back).toBe(handMoves.filter((move) => move[0] === 'B').length);
+        expect(metrics.front).toBe(handMoves.filter((move) => move[0] === 'F').length);
+        // Turned in the hands of a cube rotated into the hold, the moves solve the cross.
+        const rotation = HOLD_ROTATION[hold];
+        const done = applyAlgorithmTo([...permOf(scramble)], `${rotation} ${handMoves.join(' ')} ${rotation === '' ? '' : invertAlgorithm(rotation)}`);
+        expect(countSolved(done, CROSS_EDGES)).toBe(4);
+        // No other hold is cheaper: turning the cube in inspection is free.
+        const own = faceCost(handMoves);
+        for (const other of HOLDS) expect(own).toBeLessThanOrEqual(faceCost(moves.map((move) => holdMove(move, other))) + 1e-9);
+      }
+    }
+  });
+
+});

@@ -140,6 +140,20 @@ const EDGE_MOVE: readonly Uint8Array[] = FACE_MOVES.map((move) => {
   return table;
 });
 
+/**
+ * A white edge's place as one number: its slot (index into EDGE_SLOTS) times
+ * two, plus one when the white sticker is on the slot's second facelet.
+ */
+export function edgePlaceCode(perm: readonly number[], edge: EdgeSlot): number {
+  const { slot, flipped } = locateEdge(perm, edge);
+  return EDGE_SLOTS.indexOf(slot) * 2 + (flipped ? 1 : 0);
+}
+
+/** The place code after a face turn (`move` is an index into FACE_MOVES). */
+export function movePlaceCode(place: number, move: number): number {
+  return EDGE_MOVE[move]![place]!;
+}
+
 const BITS = 5;
 const MASK = (1 << BITS) - 1;
 
@@ -226,6 +240,41 @@ export class CrossSolver {
       solution.push(FACE_MOVES[m]!);
       code = this.step(code, m);
     }
+  }
+
+  /**
+   * Every solution of the tracked edges that is at most `extra` moves longer
+   * than the optimum, shortest first (at most `limit` of them). Left out are
+   * the ones nobody would turn: a face turned twice in a row, two opposite
+   * faces in the other order (U D is listed, D U is not), a turn that moves
+   * none of the tracked edges, and anything that passes through the solved
+   * state before its last move.
+   */
+  solutions(perm: readonly number[], extra = 0, limit = Infinity): string[][] {
+    const start = this.encode(perm);
+    const found: string[][] = [];
+    const path: number[] = [];
+    const search = (code: number, left: number): void => {
+      if (found.length >= limit) return;
+      if (this.dist[code] === 0) {
+        if (left === 0) found.push(path.map((m) => FACE_MOVES[m]!));
+        return;
+      }
+      const last = path.length === 0 ? -1 : Math.floor(path[path.length - 1]! / 3);
+      for (let m = 0; m < FACE_MOVES.length; m++) {
+        const face = Math.floor(m / 3);
+        // Faces come in opposite pairs in FACE_MOVES: U D, R L, F B.
+        if (face === last || (last >= 0 && face >> 1 === last >> 1 && face < last)) continue;
+        const moved = this.step(code, m);
+        if (moved === code || this.dist[moved]! > left - 1) continue;
+        path.push(m);
+        search(moved, left - 1);
+        path.pop();
+      }
+    };
+    const optimal = this.dist[start]!;
+    for (let length = optimal; length <= optimal + extra; length++) search(start, length);
+    return found;
   }
 }
 

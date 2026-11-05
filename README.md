@@ -189,6 +189,58 @@ cases. Levels, scoring and the adaptive progress live in
 `src/lib/dryPractice.ts`, also unit-tested; the modes are the components in
 `src/components/dry/`.
 
+### Cross Trainer
+
+The first tile of the dry-practice menu is a guide, not a game: no levels,
+no points. For a random scramble (or one you type) it shows the shortest
+white cross and the one a person would rather plan, and explains every move
+on the 3D cube.
+
+- **Plan first.** The cube comes up alone; "Show the edges" then reads the
+  position the way the cross guides teach it (each white edge is in the
+  bottom layer, *good*: one turn drops it white down, or *bad*: white to the
+  side; which edges are already right against each other), and "Show the
+  solutions" reveals the rest.
+- **Shortest against recommended.** The solver lists every solution up to
+  two moves over the optimum (typically a few thousand) and scores each:
+  one point per move, plus penalties for B and F turns and half turns, for
+  every time an edge is moved by turns meant for another edge (it has to be
+  followed in the head), for an edge leaving a slot it was right in and for
+  long setups; a turn that places two edges earns a little back. The
+  friendliest of the shortest solutions and the friendliest overall are
+  shown side by side with those counts and with what the longer one wins.
+  Up to three more options that go about it differently can be picked too.
+- **The hold is part of the solution.** White stays down, but which side
+  colour is in front is free to choose in inspection, and it decides which
+  turns are awkward: the cube's B is an easy R with orange in front. Every
+  solution is scored in all four holds and comes with its best one; turning
+  the cube costs nothing, green in front (where the scramble leaves it) only
+  wins a tie. The trainer then says "turn the cube: blue in front
+  (y2)", shows the 3D cube turned that way, and writes the moves, the slots
+  and the notes for that hold; the B and F counts in the comparison are
+  each solution's own.
+- **Step by step.** A solution is cut into steps at the turns that put an
+  edge into the cross for good; the edges of the current step are outlined
+  blue, the ones in the cross green. Every move carries notes on what it
+  does: drops an edge into its slot (the first one anywhere, the cross is
+  built relative and a D turn matches the centres), turns a bad edge good,
+  brings a slot under an edge, takes a misplaced edge out. "What to notice"
+  names the techniques with their moves: two edges with one turn, one turn
+  doing two jobs, setup turns, relative placement, temporary displacement.
+  ◀ ▶ (or the arrow keys) step through, Space plays, a click on a move
+  jumps there.
+
+Nothing is written per position and no AI is involved: `src/lib/crossTrainer.ts`
+plays each solution through on the edge model and the notes are the
+differences between the position before and after a move.
+`src/lib/crossTrainer.test.ts` replays every note on the facelet simulation
+(an edge said to drop in really is in the bottom layer and stays there, a
+turn named as dropping an edge really does) and checks the holds against
+real cube rotations: the moves written for a hold, turned on a cube rotated
+into it, solve the cross. The weights of the score are
+the `COST` table in that file. The principles come from the cross guides at
+cubefreak.net and speedcubelab.com.
+
 ## Notes
 
 - All data lives in browser Local Storage; every change is saved immediately.

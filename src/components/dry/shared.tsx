@@ -134,10 +134,13 @@ export function PracticeCube({
   pieceMarks,
   clickable,
   onStickerClick,
+  quarterTurns = 0,
 }: {
   perm: Perm;
   turn: Turn | null;
   size: number;
+  /** How many y rotations the cube is shown turned by: 1 puts the orange (R) face where the front is drawn. */
+  quarterTurns?: number;
   hidden?: boolean;
   dim?: ReadonlySet<number>;
   marks?: ReadonlyMap<number, string>;
@@ -146,7 +149,9 @@ export function PracticeCube({
   onStickerClick?: (index: number) => void;
 }) {
   const { t } = useLanguage();
+  // The view as it would be with green in front; the cube is drawn turned on from there.
   const [view, setView] = useState(DEFAULT_VIEW);
+  const turned = 90 * quarterTurns;
   const preset = (v: { rx: number; ry: number }) => view.rx === v.rx && view.ry === v.ry;
   const chip = (selected: boolean) =>
     `rounded-md border px-2 py-1 text-xs ${selected ? 'border-neutral-600 bg-neutral-800 text-neutral-100' : 'border-neutral-800 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100'}`;
@@ -156,8 +161,8 @@ export function PracticeCube({
         perm={perm}
         turn={turn}
         size={size}
-        view={view}
-        onViewChange={setView}
+        view={{ rx: view.rx, ry: view.ry - turned }}
+        onViewChange={(v) => setView({ rx: v.rx, ry: v.ry + turned })}
         hidden={hidden}
         dim={dim}
         marks={marks}
