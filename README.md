@@ -1,8 +1,8 @@
 <p align="center">
   <a href="https://cuberhub.cz">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="docs/logo-dark.svg">
-      <img src="docs/logo-light.svg" alt="Cuber Hub" width="300">
+      <source media="(prefers-color-scheme: dark)" srcset="design/cuber-hub/logo-dark.svg">
+      <img src="design/cuber-hub/logo-light.svg" alt="Cuber Hub" width="300">
     </picture>
   </a>
 </p>
@@ -24,6 +24,7 @@
   <a href="https://www.evolu.dev"><img src="https://img.shields.io/badge/Evolu-8-22C55E?style=flat-square&labelColor=20232a" alt="Evolu 8"></a>
   <a href="https://sqlite.org"><img src="https://img.shields.io/badge/SQLite-WebAssembly-003B57?style=flat-square&labelColor=20232a&logo=sqlite&logoColor=white" alt="SQLite in WebAssembly"></a>
   <a href="https://vitest.dev"><img src="https://img.shields.io/badge/Vitest-3-6E9F18?style=flat-square&labelColor=20232a&logo=vitest&logoColor=6E9F18" alt="Vitest 3"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-public_domain-A3A3A3?style=flat-square&labelColor=20232a" alt="License: public domain (Unlicense)"></a>
 </p>
 
 <p align="center">
@@ -66,7 +67,7 @@ It was called Rubik Timer before; what that version stored is taken over on the 
 
 ## Contents
 
-[Navigation](#navigation) · [Timer](#timer) · [Keyboard, mouse and touch](#keyboard-mouse-and-touch) · [Inspection](#inspection) · [Languages](#languages) · [Cheatsheet](#cheatsheet) · [Training](#training) · [Notes](#notes) · [Architecture](#architecture)
+[Navigation](#navigation) · [Timer](#timer) · [Keyboard, mouse and touch](#keyboard-mouse-and-touch) · [Inspection](#inspection) · [Languages](#languages) · [Cheatsheet](#cheatsheet) · [Training](#training) · [Notes](#notes) · [Architecture](#architecture) · [License](#license)
 
 ## Navigation
 
@@ -82,6 +83,13 @@ Every page has its own address in the URL hash, so the browser's back button
 works and a page can be bookmarked or opened directly: `#/timer`,
 `#/cheatsheet/f2l`, `#/training/cross-trainer`, … (`src/lib/route.ts`).
 While a solve is being timed the header fades out.
+
+The app opened from an iPhone's home screen is the exception: it keeps its
+place in memory and leaves the address alone, and its header is fixed to the
+top with a background of its own (`src/lib/platform.ts`,
+`src/hooks/useRoute.ts`). Since Safari 26.2 a change of the address within
+the page makes iOS replace the status bar's background with a shadow that
+darkens the top of the page ([WebKit bug 305546](https://bugs.webkit.org/show_bug.cgi?id=305546)).
 
 ## Timer
 
@@ -400,8 +408,16 @@ cubefreak.net and speedcubelab.com.
   list with its sets, set panel with the rounds table, cube net, stats,
   solve history, dialogs, import/export, the cheatsheet diagrams, the 3D
   cube, the F2L trainer and the trainers in `components/training/`.
-- `src/assets/` — the logo and the colour band, copied from the brand
-  design.
-- `docs/` — the pictures this README shows.
+- `src/assets/` — the logo and the colour band the app shows, copied from
+  `design/`.
+- `design/` — the brand: the logos, the icon and the colour band they are
+  built from, with what they mean and how to use them (in Czech).
+- `docs/` — the screenshots this README shows.
 - `deploy/` — releasing: the deploy scripts, the server set-up (nginx
   sites, the relay's service) and how it all fits together (`deploy/README.md`).
+
+## License
+
+Public domain: everything in this repository, the code and the design alike, is
+released under [The Unlicense](LICENSE). Use it for anything, with no need
+to ask or to give credit, and with no warranty.

@@ -1,0 +1,8 @@
+{
+  "name": "cuberhub-relay",
+  "private": true,
+  "description": "The Evolu relay Cuber Hub syncs through, at the version the app's Evolu packages go with. Installed on the server by deploy/server/install.sh.",
+  "dependencies": {
+    "@evolu/relay": "4.3.3"
+  }
+}

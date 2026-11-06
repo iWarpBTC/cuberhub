@@ -8,6 +8,7 @@ import { TimerPage } from './components/TimerPage';
 import { Training } from './components/training/Training';
 import { navigate, useRoute } from './hooks/useRoute';
 import { useLanguage } from './i18n/LanguageContext';
+import { IOS_APP } from './lib/platform';
 import type { CheatsheetTab } from './lib/route';
 
 /** The shell: the header on top of whichever page the URL names. */
@@ -27,7 +28,8 @@ export function App() {
   }, [route.page, t]);
 
   return (
-    <div className="flex h-dvh flex-col bg-neutral-950 text-neutral-100">
+    // Where the header is fixed to the top (see AppHeader), the page starts below it.
+    <div className={`flex h-dvh flex-col bg-neutral-950 text-neutral-100 ${IOS_APP ? 'pt-(--header-h)' : ''}`}>
       <AppHeader route={route} cheatsheetTab={cheatsheetTab} dimmed={solving} />
       {route.page === 'home' ? (
         <Home cheatsheetTab={cheatsheetTab} />

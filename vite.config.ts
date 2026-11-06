@@ -1,6 +1,6 @@
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { defineConfig } from 'vite';
+import { configDefaults, defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
@@ -31,4 +31,6 @@ export default defineConfig({
   // The database starts workers and loads SQLite as WebAssembly, both by paths next to its own files,
   // which only hold while Vite serves those files as they are instead of prebundling them.
   optimizeDeps: { exclude: ['@evolu/web', '@evolu/sqlite-wasm'] },
+  // Only this project's tests: Claude Code keeps whole copies of the repository under .claude/worktrees.
+  test: { exclude: [...configDefaults.exclude, '.claude/**'] },
 });

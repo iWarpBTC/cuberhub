@@ -1,0 +1,47 @@
+# systemd service for the Cuber Hub sync relay at wss://relay.cuberhub.cz (the Evolu relay, see deploy/README.md).
+# Installed by deploy/server/install.sh as /etc/systemd/system/cuberhub-relay.service.
+[Unit]
+Description=Cuber Hub sync relay (relay.cuberhub.cz)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=cuberhub-relay
+Group=cuberhub-relay
+# The relay keeps its database in ./data of the directory it starts in.
+WorkingDirectory=/var/lib/cuberhub-relay
+ExecStart=/usr/bin/node /opt/cuberhub/relay/node_modules/@evolu/relay/dist/src/index.js
+Environment=PORT=26547
+# What one user's data may take, deletions and every edit included (history only grows). Not a limit on the disk as a whole.
+Environment=EVOLU_RELAY_MAX_OWNER_BYTES=50MiB
+Environment=NODE_ENV=production
+# /var/lib/cuberhub-relay: the encrypted changes of every user, readable only by the relay's user
+StateDirectory=cuberhub-relay
+StateDirectoryMode=0700
+UMask=0077
+# The relay exits when it cannot trust its own state any more; clients reconnect and send what it missed.
+Restart=always
+RestartSec=5
+MemoryMax=384M
+
+# It listens on every address, but only nginx on this machine may reach it, and it reaches nothing.
+IPAddressDeny=any
+IPAddressAllow=localhost
+
+# It needs nothing beyond its own state directory and that connection.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target
