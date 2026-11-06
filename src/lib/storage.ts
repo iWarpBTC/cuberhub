@@ -1,6 +1,7 @@
 import type { AppData, F2LSolution, Penalty, Scramble, ScrambleSet, Solve } from '../types';
 import type { Lang } from '../i18n/lang';
 import { isValidScramble } from './cube';
+import { normalizeId } from './id';
 import { F2L_CASES } from './f2l';
 import { parseFaceMove } from './f2lTrainer';
 import {
@@ -10,6 +11,7 @@ import {
   emptyProgress,
   type DryMode,
   type DryPracticeData,
+  type DrySettings,
   type ModeProgress,
   type TaskRecord,
   type TimeSetting,
@@ -20,6 +22,9 @@ const KEY_PREFIX = 'cuberhub:';
 const LEGACY_KEY_PREFIX = 'rubik-timer:';
 
 const STORAGE_KEY = `${KEY_PREFIX}data`;
+/** Where the data lives on after the database took it over. */
+const RETIRED_KEY = `${KEY_PREFIX}data-before-database`;
+const CARRY_OVER_KEY = `${KEY_PREFIX}carry-over`;
 const ACTIVE_SCRAMBLE_KEY = `${KEY_PREFIX}active-scramble`;
 const ACTIVE_SET_KEY = `${KEY_PREFIX}active-set`;
 const LIST_OPEN_KEY = `${KEY_PREFIX}list-open`;
@@ -28,6 +33,7 @@ const FAVORITE_ALGS_KEY = `${KEY_PREFIX}favorite-algorithms`;
 const FAVORITES_ONLY_KEY = `${KEY_PREFIX}favorite-algorithms-only`;
 const INSPECTION_KEY = `${KEY_PREFIX}inspection`;
 const DRY_PRACTICE_KEY = `${KEY_PREFIX}dry-practice`;
+const TRAINING_SETTINGS_KEY = `${KEY_PREFIX}training-settings`;
 
 export const EXPORT_FORMAT = 'cuberhub';
 /** The format of files exported while the app was called Rubik Timer; still imported. */
@@ -97,14 +103,14 @@ function parseNumber(value: unknown): number {
 }
 
 /** A parsed scramble; `number` is 0 when the data predates stored numbers. */
-function parseScramble(value: unknown): Scramble | null {
+export function parseScramble(value: unknown): Scramble | null {
   if (!isRecord(value)) return null;
   const { id, scramble, createdAt, number, favorite, title, notes } = value;
   if (typeof id !== 'string' || id.length === 0) return null;
   if (typeof scramble !== 'string' || !isValidScramble(scramble)) return null;
-  if (typeof createdAt !== 'number') return null;
+  if (typeof createdAt !== 'number' || !Number.isFinite(createdAt)) return null;
   const result: Scramble = {
-    id,
+    id: normalizeId(id),
     scramble,
     createdAt,
     number: parseNumber(number),
@@ -115,21 +121,21 @@ function parseScramble(value: unknown): Scramble | null {
   return result;
 }
 
-function parseSolve(value: unknown, scrambleIds: ReadonlySet<string>): Solve | null {
+export function parseSolve(value: unknown, scrambleIds: ReadonlySet<string>): Solve | null {
   if (!isRecord(value)) return null;
   const { id, scrambleId, timeMs, penalty, inspectionPenalty, createdAt, notes } = value;
   if (typeof id !== 'string' || id.length === 0) return null;
-  if (typeof scrambleId !== 'string' || !scrambleIds.has(scrambleId)) return null;
+  if (typeof scrambleId !== 'string' || !scrambleIds.has(normalizeId(scrambleId))) return null;
   if (typeof timeMs !== 'number' || !Number.isFinite(timeMs) || timeMs < 0) return null;
   if (typeof penalty !== 'string' || !PENALTIES.includes(penalty as Penalty)) return null;
   // Absent for solves timed without inspection (and in older exports).
   if (inspectionPenalty !== undefined && (typeof inspectionPenalty !== 'string' || !PENALTIES.includes(inspectionPenalty as Penalty))) {
     return null;
   }
-  if (typeof createdAt !== 'number') return null;
+  if (typeof createdAt !== 'number' || !Number.isFinite(createdAt)) return null;
   const result: Solve = {
-    id,
-    scrambleId,
+    id: normalizeId(id),
+    scrambleId: normalizeId(scrambleId),
     timeMs,
     penalty: penalty as Penalty,
     createdAt,
@@ -148,16 +154,18 @@ function parseSet(value: unknown, scrambleIds: ReadonlySet<string>, claimed: Set
   if (!isRecord(value)) return null;
   const { id, createdAt, number, scrambleIds: members, title, notes } = value;
   if (typeof id !== 'string' || id.length === 0) return null;
-  if (typeof createdAt !== 'number') return null;
+  if (typeof createdAt !== 'number' || !Number.isFinite(createdAt)) return null;
   if (!Array.isArray(members)) return null;
   const ids: string[] = [];
-  for (const member of members) {
-    if (typeof member !== 'string' || !scrambleIds.has(member) || claimed.has(member)) continue;
+  for (const raw of members) {
+    if (typeof raw !== 'string') continue;
+    const member = normalizeId(raw);
+    if (!scrambleIds.has(member) || claimed.has(member)) continue;
     claimed.add(member);
     ids.push(member);
   }
   if (ids.length === 0) return null;
-  const result: ScrambleSet = { id, createdAt, number: parseNumber(number), scrambleIds: ids };
+  const result: ScrambleSet = { id: normalizeId(id), createdAt, number: parseNumber(number), scrambleIds: ids };
   if (typeof title === 'string' && title.length > 0) result.title = title;
   if (typeof notes === 'string' && notes.length > 0) result.notes = notes;
   return result;
@@ -172,29 +180,33 @@ function isFaceTurnAlgorithm(value: unknown): value is string {
   return tokens.length > 0 && tokens.every((token) => parseFaceMove(token) !== null);
 }
 
-function parseF2LSolution(value: unknown): F2LSolution | null {
+export function parseF2LSolution(value: unknown): F2LSolution | null {
   if (!isRecord(value)) return null;
   const { id, caseId, alg, source, note, createdAt } = value;
   if (typeof id !== 'string' || id.length === 0) return null;
   if (typeof caseId !== 'string' || !F2L_CASE_IDS.has(caseId)) return null;
   if (!isFaceTurnAlgorithm(alg)) return null;
-  if (typeof createdAt !== 'number') return null;
-  const result: F2LSolution = { id, caseId, alg, createdAt };
+  if (typeof createdAt !== 'number' || !Number.isFinite(createdAt)) return null;
+  const result: F2LSolution = { id: normalizeId(id), caseId, alg, createdAt };
   if (typeof source === 'string' && source.length > 0) result.source = source;
   if (typeof note === 'string' && note.length > 0) result.note = note;
   return result;
 }
 
 /**
- * Numbers items saved before numbers were stored, continuing after the
- * highest number in use. For such data this matches the numbers shown before,
- * which were positions in creation order.
+ * Numbers items by the order they were made in, which is what their numbers
+ * mean, and makes their times distinct (items made in the same millisecond
+ * keep the order their stored numbers gave them), so that the order is the
+ * same on every device the data syncs to.
  */
-function assignMissingNumbers(items: Array<{ number: number }>): void {
-  let next = items.reduce((max, s) => Math.max(max, s.number), 0) + 1;
-  for (const item of items) {
-    if (item.number === 0) item.number = next++;
-  }
+function numberByCreation(items: Array<{ createdAt: number; number: number }>): void {
+  items.sort((a, b) => a.createdAt - b.createdAt || a.number - b.number);
+  let last = -Infinity;
+  items.forEach((item, i) => {
+    last = Math.max(item.createdAt, last + 1);
+    item.createdAt = last;
+    item.number = i + 1;
+  });
 }
 
 function parseData(value: unknown): AppData {
@@ -209,9 +221,8 @@ function parseData(value: unknown): AppData {
   }
   const scrambles = value.scrambles
     .map(parseScramble)
-    .filter((s): s is Scramble => s !== null)
-    .sort((a, b) => a.createdAt - b.createdAt);
-  assignMissingNumbers(scrambles);
+    .filter((s): s is Scramble => s !== null);
+  numberByCreation(scrambles);
   const ids = new Set(scrambles.map((s) => s.id));
   const solves = value.solves
     .map((s) => parseSolve(s, ids))
@@ -220,9 +231,8 @@ function parseData(value: unknown): AppData {
   const claimed = new Set<string>();
   const sets = (value.sets ?? [])
     .map((s: unknown) => parseSet(s, ids, claimed))
-    .filter((s: ScrambleSet | null): s is ScrambleSet => s !== null)
-    .sort((a: ScrambleSet, b: ScrambleSet) => a.createdAt - b.createdAt);
-  assignMissingNumbers(sets);
+    .filter((s: ScrambleSet | null): s is ScrambleSet => s !== null);
+  numberByCreation(sets);
   const f2lSolutions = (value.f2lSolutions ?? [])
     .map(parseF2LSolution)
     .filter((s: F2LSolution | null): s is F2LSolution => s !== null)
@@ -230,18 +240,42 @@ function parseData(value: unknown): AppData {
   return { scrambles, solves, sets, f2lSolutions };
 }
 
-export function loadData(): AppData {
+/**
+ * The data the app kept in the browser's storage before it had a database, or
+ * null when there is none (left). It is read once, to be handed over.
+ */
+export function loadStoredData(storage: Storage = localStorage): AppData | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw === null) return EMPTY_DATA;
-    return parseData(JSON.parse(raw));
+    const raw = storage.getItem(STORAGE_KEY);
+    if (raw === null) return null;
+    const data = parseData(JSON.parse(raw));
+    return data.scrambles.length + data.f2lSolutions.length > 0 ? data : null;
   } catch {
-    return EMPTY_DATA;
+    return null;
   }
 }
 
-export function saveData(data: AppData): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+/** Sets the old stored data aside (kept as a backup) once the database has it. */
+export function retireStoredData(storage: Storage = localStorage): void {
+  const raw = storage.getItem(STORAGE_KEY);
+  if (raw === null) return;
+  storage.removeItem(STORAGE_KEY);
+  try {
+    storage.setItem(RETIRED_KEY, raw);
+  } catch {
+    // No room for the backup: the database has the data.
+  }
+}
+
+/** What a device brings along when it joins the data of another: set aside before the reload, added after it. */
+export function stashCarryOver(json: string, storage: Storage = localStorage): void {
+  storage.setItem(CARRY_OVER_KEY, json);
+}
+
+export function takeCarryOver(storage: Storage = localStorage): string | null {
+  const json = storage.getItem(CARRY_OVER_KEY);
+  storage.removeItem(CARRY_OVER_KEY);
+  return json;
 }
 
 export function loadActiveScrambleId(): string | null {
@@ -361,13 +395,16 @@ function parseTimeSetting(value: unknown): TimeSetting {
   return 'auto';
 }
 
-/** The dry-practice progress and settings; anything unreadable falls back to a fresh start. */
-export function loadDryPractice(): DryPracticeData {
+/**
+ * The training progress the app kept in the browser's storage before it had a
+ * database, or null when there is none (left). It is read once, to be handed over.
+ */
+export function loadStoredDryPractice(storage: Storage = localStorage): DryPracticeData | null {
   try {
-    const raw = localStorage.getItem(DRY_PRACTICE_KEY);
-    if (raw === null) return emptyDryPractice();
+    const raw = storage.getItem(DRY_PRACTICE_KEY);
+    if (raw === null) return null;
     const value: unknown = JSON.parse(raw);
-    if (!isRecord(value)) return emptyDryPractice();
+    if (!isRecord(value)) return null;
     const modes = isRecord(value.modes) ? value.modes : {};
     const settings = isRecord(value.settings) ? value.settings : {};
     return {
@@ -375,12 +412,27 @@ export function loadDryPractice(): DryPracticeData {
       settings: { memorize: parseTimeSetting(settings.memorize), inspection: parseTimeSetting(settings.inspection) },
     };
   } catch {
-    return emptyDryPractice();
+    return null;
   }
 }
 
-export function saveDryPractice(data: DryPracticeData): void {
-  localStorage.setItem(DRY_PRACTICE_KEY, JSON.stringify(data));
+export function retireStoredDryPractice(storage: Storage = localStorage): void {
+  storage.removeItem(DRY_PRACTICE_KEY);
+}
+
+/** The training time settings: how this device likes to train, so they stay on it. */
+export function loadTrainingSettings(): DrySettings {
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem(TRAINING_SETTINGS_KEY) ?? 'null');
+    if (!isRecord(value)) return emptyDryPractice().settings;
+    return { memorize: parseTimeSetting(value.memorize), inspection: parseTimeSetting(value.inspection) };
+  } catch {
+    return emptyDryPractice().settings;
+  }
+}
+
+export function saveTrainingSettings(settings: DrySettings): void {
+  localStorage.setItem(TRAINING_SETTINGS_KEY, JSON.stringify(settings));
 }
 
 export function serializeExport(data: AppData): string {

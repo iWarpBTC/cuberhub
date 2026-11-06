@@ -44,8 +44,9 @@ the first move it can't read, and takes an optional name for the scramble.
 ```sh
 npm install
 npm run dev      # start the app
-npm test         # run unit tests (stats, cube simulation, scramble generator)
+npm test         # run unit tests (stats, cube simulation, scramble generator, sync rows)
 npm run build    # typecheck + production build
+npm run deploy   # test, build and release to https://cuberhub.cz (see deploy/README.md)
 ```
 
 ## Keyboard, mouse and touch
@@ -276,10 +277,26 @@ cubefreak.net and speedcubelab.com.
 
 ## Notes
 
-- All data lives in browser Local Storage under `cuberhub:` keys; every
-  change is saved immediately. Data saved while the app was called Rubik
-  Timer (`rubik-timer:` keys) is moved over on the first start
-  (`migrateLegacyStorage`).
+- The data (scrambles, solves, sets, F2L solutions, training results) lives
+  in a local database in the browser: [Evolu](https://www.evolu.dev), which
+  is SQLite stored by the browser. Every change is saved immediately and the
+  app works offline. What an earlier version kept in Local Storage is taken
+  over on the first start (a copy stays under `cuberhub:data-before-database`).
+  Settings of the device (language, inspection, what is open, training time
+  limits, favourite algorithms) stay in Local Storage under `cuberhub:` keys.
+- Sync between devices is off until it is turned on on the Sync page
+  (`#/sync`). There is no account: a device has a key of 24 words, and a
+  second device shows the same data once that key is entered on it. Changes
+  are encrypted on the device; the relay that passes them on cannot read
+  them. The relay is set with `VITE_SYNC_RELAY` at build time: the released
+  app uses its own (`.env.production`, see `deploy/README.md`); a development
+  build without the variable uses Evolu's testing relay, which may delete
+  what it holds.
+- Nothing that two devices could disagree on is stored. The number in
+  "Scramble #n" is the scramble's place among all scrambles ever made, by the
+  time they were made; deleted rows stay in the database (marked deleted) and
+  keep their place. The training progress is worked out by replaying every
+  answered task in order, so results from two devices add up.
 - Export/Import uses a versioned JSON format (`format: "cuberhub", version: 1`).
   Importing replaces all stored data after confirmation. Files exported under
   the former name (`format: "rubik-timer"`) still import, and files exported
@@ -303,8 +320,15 @@ cubefreak.net and speedcubelab.com.
   optimal cross solver with the dry-practice levels and scoring, statistics,
   formatting, storage, the routes, and the notation / algorithm data.
 - `src/i18n/` — language detection, the language context and UI strings.
-- `src/store/` — single reducer store (React context) persisted to Local
-  Storage on every change.
+- `src/store/` — the reducer store (`reducer.ts`, `store.ts`) with its React
+  hooks (`StoreContext.tsx`), the training store (`training.ts`) and the
+  start-up that opens the database and takes over older data (`boot.ts`).
+- `src/sync/` — the database: `db.ts` is the only module that knows Evolu
+  (schema, reading, writing, the device key, the relay); `rows.ts` turns the
+  app's data into rows and back (numbering included) and works out what a
+  change has to write; `persist.ts` keeps the store and the database the
+  same. The schema only ever grows: add tables and columns, never rename,
+  retype or remove them.
 - `src/hooks/useTimer.ts` — the timer state machine (space bar and pointer,
   with the optional inspection); `src/lib/inspection.ts` holds the WCA
   inspection rules.
@@ -317,3 +341,5 @@ cubefreak.net and speedcubelab.com.
   cube, the F2L trainer and the trainers in `components/training/`.
 - `src/assets/` — the logo and the colour band, copied from the brand
   design.
+- `deploy/` — releasing: the deploy scripts, the server set-up (nginx
+  sites, the relay's service) and how it all fits together (`deploy/README.md`).

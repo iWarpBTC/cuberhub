@@ -252,15 +252,18 @@ function tail<T>(items: readonly T[], n: number): T[] {
   return items.slice(Math.max(0, items.length - n));
 }
 
-/** The progress after a result: points, streak, bests, history and the adaptive level. */
-export function recordResult(progress: ModeProgress, result: TaskResult, limitMs: number | null = null): Outcome {
-  const correct = isCorrect(result);
-  const score = scoreResult(result, progress.streak, limitMs);
+/**
+ * The progress after one more scored record: points, streak, bests, history
+ * and the adaptive level. `recordResult` uses it for a fresh result and
+ * `replay` for every stored one, so both always agree.
+ */
+function advance(progress: ModeProgress, mode: DryMode, record: TaskRecord): Omit<Outcome, 'score'> {
+  const correct = isCorrect(record);
   const streak = correct ? progress.streak + 1 : 0;
   const recent = [...progress.recent, correct];
   let level = progress.level;
   let levelChange: -1 | 0 | 1 = 0;
-  const maximum = maxLevel(result.mode);
+  const maximum = maxLevel(mode);
   if (recent.length >= CORRECT_FOR_LEVEL_UP && tail(recent, CORRECT_FOR_LEVEL_UP).every(Boolean) && level < maximum) {
     level++;
     levelChange = 1;
@@ -269,38 +272,88 @@ export function recordResult(progress: ModeProgress, result: TaskResult, limitMs
     levelChange = -1;
   }
   const newBest = {
-    score: score.total > 0 && (progress.bestScore === null || score.total > progress.bestScore),
-    time: correct && (progress.bestTimeMs === null || result.timeMs < progress.bestTimeMs),
+    score: record.score > 0 && (progress.bestScore === null || record.score > progress.bestScore),
+    time: correct && (progress.bestTimeMs === null || record.timeMs < progress.bestTimeMs),
   };
-  const record: TaskRecord = {
-    at: result.at,
-    level: result.level,
-    accuracy: result.accuracy,
-    timeMs: result.timeMs,
-    score: score.total,
-  };
-  if (result.moves !== undefined) record.moves = result.moves;
-  if (result.optimal !== undefined) record.optimal = result.optimal;
   return {
     progress: {
       level,
-      points: progress.points + score.total,
+      points: progress.points + record.score,
       attempts: progress.attempts + 1,
       correct: progress.correct + (correct ? 1 : 0),
       streak,
       bestStreak: Math.max(progress.bestStreak, streak),
       recent: levelChange === 0 ? tail(recent, Math.max(CORRECT_FOR_LEVEL_UP, WRONG_FOR_LEVEL_DOWN)) : [],
-      bestScore: newBest.score ? score.total : progress.bestScore,
-      bestTimeMs: newBest.time ? result.timeMs : progress.bestTimeMs,
-      optimalCount:
-        progress.optimalCount + (correct && result.moves !== undefined && result.moves === result.optimal ? 1 : 0),
+      bestScore: newBest.score ? record.score : progress.bestScore,
+      bestTimeMs: newBest.time ? record.timeMs : progress.bestTimeMs,
+      optimalCount: progress.optimalCount + (correct && record.moves !== undefined && record.moves === record.optimal ? 1 : 0),
       history: tail([...progress.history, record], HISTORY_LENGTH),
     },
-    score,
     levelChange,
     newBest,
     correct,
   };
+}
+
+/** A result as it is kept: scored with the streak before it, without what the progress already knows. */
+export function toRecord(result: TaskResult, score: number): TaskRecord {
+  const record: TaskRecord = { at: result.at, level: result.level, accuracy: result.accuracy, timeMs: result.timeMs, score };
+  if (result.moves !== undefined) record.moves = result.moves;
+  if (result.optimal !== undefined) record.optimal = result.optimal;
+  return record;
+}
+
+/** The progress after a result: points, streak, bests, history and the adaptive level. */
+export function recordResult(progress: ModeProgress, result: TaskResult, limitMs: number | null = null): Outcome {
+  const score = scoreResult(result, progress.streak, limitMs);
+  return { ...advance(progress, result.mode, toRecord(result, score.total)), score };
+}
+
+/**
+ * What happened in a mode, as it is stored: an answered task with the points
+ * it earned, or a level picked by hand. Events are never changed once made;
+ * the progress is what replaying them gives.
+ */
+export type DryEvent =
+  | { kind: 'attempt'; id: string; mode: DryMode; record: TaskRecord }
+  | { kind: 'level'; id: string; mode: DryMode; at: number; level: number };
+
+export function eventTime(event: DryEvent): number {
+  return event.kind === 'attempt' ? event.record.at : event.at;
+}
+
+/**
+ * The progress of every mode after all `events`, taken in the order they
+ * happened. Two devices that trained apart get the same progress once they
+ * have each other's events: points add up, and streaks and levels follow from
+ * the combined order.
+ */
+export function replay(events: readonly DryEvent[]): Record<DryMode, ModeProgress> {
+  const modes = emptyDryPractice().modes;
+  const ordered = [...events].sort((a, b) => eventTime(a) - eventTime(b) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  for (const event of ordered) {
+    modes[event.mode] =
+      event.kind === 'attempt' ? advance(modes[event.mode], event.mode, event.record).progress : withLevel(modes[event.mode], event.mode, event.level);
+  }
+  return modes;
+}
+
+/**
+ * Events that replay to (about) a progress kept the old way, as totals: its
+ * remembered results, then its level. Totals from before the remembered
+ * results (the history holds the last hundred) are not carried over.
+ */
+export function eventsFromProgress(modes: Record<DryMode, ModeProgress>, makeId: () => string): DryEvent[] {
+  const events: DryEvent[] = [];
+  for (const mode of DRY_MODES) {
+    const progress = modes[mode];
+    for (const record of progress.history) events.push({ kind: 'attempt', id: makeId(), mode, record });
+    if (progress.level > 1 || progress.history.length > 0) {
+      const after = progress.history.reduce((latest, record) => Math.max(latest, record.at), 0) + 1;
+      events.push({ kind: 'level', id: makeId(), mode, at: after, level: progress.level });
+    }
+  }
+  return events;
 }
 
 /** The progress with the level picked by hand; the adaptive counter starts over. */

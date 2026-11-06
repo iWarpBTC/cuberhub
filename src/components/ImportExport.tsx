@@ -4,6 +4,7 @@ import { useDispatch, useStore } from '../store/StoreContext';
 import { ImportError, parseImport, serializeExport } from '../lib/storage';
 import { useLanguage } from '../i18n/LanguageContext';
 import { ConfirmDialog } from './ConfirmDialog';
+import { SyncLink } from './SyncLink';
 
 export function ImportExport({ onDialogOpenChange }: { onDialogOpenChange: (open: boolean) => void }) {
   const { t } = useLanguage();
@@ -56,6 +57,7 @@ export function ImportExport({ onDialogOpenChange }: { onDialogOpenChange: (open
           {t.importExport.import}
         </button>
       </div>
+      <SyncLink className="mt-2" />
       {error !== null && (
         <p className="mt-2 text-xs text-red-400">
           {error === 'failed' ? t.importExport.failed : t.importExport.errors[error.code]}

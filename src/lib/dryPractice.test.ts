@@ -5,12 +5,16 @@ import {
   WRONG_FOR_LEVEL_DOWN,
   effectiveTime,
   emptyProgress,
+  eventsFromProgress,
   maxLevel,
   modeStats,
   recordResult,
+  replay,
   scoreResult,
   toNextLevel,
+  toRecord,
   withLevel,
+  type DryEvent,
   type ModeProgress,
   type TaskResult,
 } from './dryPractice';
@@ -113,5 +117,59 @@ describe('progress', () => {
     const q = recordResult(p, result({ mode: 'cross', moves: 7, optimal: 5 })).progress;
     expect(q.optimalCount).toBe(1);
     expect(modeStats(q).recentExtraMoves).toBe(1);
+  });
+});
+
+describe('replay', () => {
+  /** Plays results one after another the way a device does, and returns the events it stores with the progress it shows. */
+  const play = (results: TaskResult[], prefix: string) => {
+    let progress = emptyProgress();
+    const events: DryEvent[] = results.map((r, i) => {
+      const outcome = recordResult(progress, r);
+      progress = outcome.progress;
+      return { kind: 'attempt', id: `${prefix}${i}`, mode: r.mode, record: toRecord(r, outcome.score.total) };
+    });
+    return { events, progress };
+  };
+
+  it('gives the progress the device showed while the results came in', () => {
+    const results = [1, 1, 0, 1, 1, 1, 0.5, 1].map((accuracy, i) => result({ accuracy, at: i + 1, timeMs: 2000 + i }));
+    const { events, progress } = play(results, 'a');
+    expect(replay(events).hunter).toEqual(progress);
+    expect(replay([...events].reverse()).hunter).toEqual(progress);
+  });
+
+  it('adds up what two devices did apart, the same on both', () => {
+    const here = play([result({ at: 10 }), result({ at: 30 }), result({ at: 50 })], 'a').events;
+    const there = play([result({ at: 20 }), result({ at: 40, accuracy: 0 })], 'b').events;
+    const merged = replay([...here, ...there]).hunter;
+    expect(replay([...there, ...here]).hunter).toEqual(merged);
+    expect(merged.attempts).toBe(5);
+    expect(merged.correct).toBe(4);
+    // Points are what each answer earned when it was given.
+    expect(merged.points).toBe([...here, ...there].reduce((sum, e) => sum + (e.kind === 'attempt' ? e.record.score : 0), 0));
+    // In the combined order the wrong answer at 40 broke the streak.
+    expect(merged.streak).toBe(1);
+  });
+
+  it('follows a level picked by hand from the moment it was picked', () => {
+    const { events } = play([result({ at: 1 }), result({ at: 2 })], 'a');
+    const picked: DryEvent = { kind: 'level', id: 'l', mode: 'hunter', at: 3, level: 4 };
+    const progress = replay([...events, picked]).hunter;
+    expect(progress.level).toBe(4);
+    expect(progress.recent).toEqual([]);
+    expect(progress.attempts).toBe(2);
+  });
+
+  it('carries a progress kept as totals over as its remembered results and its level', () => {
+    let progress = withLevel(emptyProgress(), 'tracker', 5);
+    for (let i = 0; i < 4; i++) progress = recordResult(progress, result({ mode: 'tracker', level: progress.level, at: 100 + i, accuracy: i === 2 ? 0 : 1 })).progress;
+    let n = 0;
+    const events = eventsFromProgress({ hunter: emptyProgress(), tracker: progress, miniCross: emptyProgress(), cross: emptyProgress() }, () => `e${n++}`);
+    const carried = replay(events);
+    expect(carried.tracker.level).toBe(progress.level);
+    expect(carried.tracker.points).toBe(progress.points);
+    expect(carried.tracker.history).toEqual(progress.history);
+    expect(carried.hunter).toEqual(emptyProgress());
   });
 });

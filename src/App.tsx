@@ -3,6 +3,7 @@ import { AppHeader } from './components/AppHeader';
 import { Cheatsheet } from './components/Cheatsheet';
 import { Home } from './components/Home';
 import { APP_NAME } from './components/sections';
+import { SyncPage } from './components/SyncPage';
 import { TimerPage } from './components/TimerPage';
 import { Training } from './components/training/Training';
 import { navigate, useRoute } from './hooks/useRoute';
@@ -21,7 +22,8 @@ export function App() {
   const openCheatsheet = useCallback(() => navigate({ page: 'cheatsheet', tab: cheatsheetTab }), [cheatsheetTab]);
 
   useEffect(() => {
-    document.title = route.page === 'home' ? APP_NAME : `${t.nav[route.page]} · ${APP_NAME}`;
+    const page = route.page === 'home' ? null : route.page === 'sync' ? t.sync.title : t.nav[route.page];
+    document.title = page === null ? APP_NAME : `${page} · ${APP_NAME}`;
   }, [route.page, t]);
 
   return (
@@ -33,6 +35,8 @@ export function App() {
         <TimerPage onSolvingChange={setSolving} onOpenCheatsheet={openCheatsheet} />
       ) : route.page === 'cheatsheet' ? (
         <Cheatsheet tab={route.tab} />
+      ) : route.page === 'sync' ? (
+        <SyncPage />
       ) : (
         <Training screen={route.screen} />
       )}

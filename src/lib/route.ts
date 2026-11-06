@@ -19,7 +19,9 @@ export type Route =
   | { page: 'home' }
   | { page: 'timer' }
   | { page: 'cheatsheet'; tab: CheatsheetTab }
-  | { page: 'training'; screen: TrainingScreen | null };
+  | { page: 'training'; screen: TrainingScreen | null }
+  /** Turning sync on and connecting devices; reached from the home page and the scramble list, not a section. */
+  | { page: 'sync' };
 
 export const HOME: Route = { page: 'home' };
 
@@ -42,6 +44,8 @@ export function routeHref(route: Route): string {
       return route.tab === 'moves' ? '#/cheatsheet' : `#/cheatsheet/${route.tab}`;
     case 'training':
       return route.screen === null ? '#/training' : `#/training/${TRAINING_SLUGS[route.screen]}`;
+    case 'sync':
+      return '#/sync';
   }
 }
 
@@ -55,6 +59,8 @@ export function parseRoute(hash: string): Route {
       return { page: 'cheatsheet', tab: CHEATSHEET_TABS.find((tab) => tab === sub) ?? 'moves' };
     case 'training':
       return { page: 'training', screen: TRAINING_SCREENS.find((screen) => TRAINING_SLUGS[screen] === sub) ?? null };
+    case 'sync':
+      return { page: 'sync' };
     default:
       return HOME;
   }

@@ -1,16 +1,13 @@
-import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
+import { useCallback, useEffect, type JSX } from 'react';
 import { navigate } from '../../hooks/useRoute';
 import { useLanguage } from '../../i18n/LanguageContext';
 import {
   DRY_MODES,
   maxLevel,
   modeStats,
-  recordResult,
   toNextLevel,
   totalPoints,
-  withLevel,
   type DryMode,
-  type DryPracticeData,
   type DrySettings,
   type ModeProgress,
   type Outcome,
@@ -18,7 +15,7 @@ import {
   type TimeSetting,
 } from '../../lib/dryPractice';
 import { routeHref, type Route, type TrainingScreen } from '../../lib/route';
-import { loadDryPractice, saveDryPractice } from '../../lib/storage';
+import { useStores, useTraining } from '../../store/StoreContext';
 import { CrossChallenge } from './CrossChallenge';
 import { CrossTrainer } from './CrossTrainer';
 import { EdgeHunter } from './EdgeHunter';
@@ -215,27 +212,14 @@ function ModeBar({
  */
 export function Training({ screen }: { screen: TrainingScreen | null }) {
   const { t } = useLanguage();
-  const [data, setData] = useState<DryPracticeData>(loadDryPractice);
-  const dataRef = useRef(data);
-  dataRef.current = data;
+  const { training } = useStores();
+  const data = useTraining();
   const mode = screen === 'trainer' ? null : screen;
 
-  useEffect(() => saveDryPractice(data), [data]);
-
-  const update = useCallback((next: DryPracticeData) => {
-    dataRef.current = next;
-    setData(next);
-  }, []);
-
-  // Scores the result right away so the mode can show it, and remembers the new progress.
+  // Scores the result right away so the mode can show it, and remembers it.
   const onResult = useCallback(
-    (result: TaskResult, limitMs: number | null = null): Outcome => {
-      const current = dataRef.current;
-      const outcome = recordResult(current.modes[result.mode], result, limitMs);
-      update({ ...current, modes: { ...current.modes, [result.mode]: outcome.progress } });
-      return outcome;
-    },
-    [update],
+    (result: TaskResult, limitMs: number | null = null): Outcome => training.record(result, limitMs),
+    [training],
   );
 
   // Escape leaves a training for the menu (unless the training used the key itself).
@@ -288,8 +272,8 @@ export function Training({ screen }: { screen: TrainingScreen | null }) {
             mode={mode}
             progress={data.modes[mode]}
             settings={data.settings}
-            onLevel={(level) => update({ ...data, modes: { ...data.modes, [mode]: withLevel(data.modes[mode], mode, level) } })}
-            onSettings={(patch) => update({ ...data, settings: { ...data.settings, ...patch } })}
+            onLevel={(level) => training.setLevel(mode, level)}
+            onSettings={(patch) => training.setSettings(patch)}
           />
           <Mode key={mode} level={data.modes[mode].level} settings={data.settings} onResult={onResult} />
         </>

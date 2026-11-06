@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { normalizeId } from './id';
 import { EXPORT_FORMAT, EXPORT_VERSION, ImportError, LEGACY_EXPORT_FORMAT, migrateLegacyStorage, parseImport } from './storage';
+
+/** The id a short test id is kept under: ids that are not UUIDs become one. */
+const u = normalizeId;
 
 const SEQUENCE = "R U R' U'";
 
@@ -13,38 +17,60 @@ const THREE = [
   { id: 'c', scramble: SEQUENCE, createdAt: 3, number: 3 },
 ];
 
-describe('parseImport scramble numbers', () => {
-  it('keeps stored numbers, including gaps left by deleted scrambles', () => {
-    const data = parseImport(
-      exportJson([
-        { id: 'a', scramble: SEQUENCE, createdAt: 1, number: 1 },
-        { id: 'c', scramble: SEQUENCE, createdAt: 3, number: 3 },
-      ]),
-    );
-    expect(data.scrambles.map((s) => s.number)).toEqual([1, 3]);
+describe('parseImport ids', () => {
+  it('keeps UUIDs and turns other ids into the same UUID every time', () => {
+    const uuid = '0b0e6d6e-3c2f-4a39-9d0c-0c1c1f3b8a11';
+    const read = () =>
+      parseImport(
+        exportJson(
+          [
+            { id: uuid.toUpperCase(), scramble: SEQUENCE, createdAt: 1 },
+            { id: 'old-id', scramble: SEQUENCE, createdAt: 2 },
+          ],
+          [{ id: 'set', createdAt: 3, scrambleIds: ['old-id'] }],
+          [{ id: 'solve', scrambleId: 'old-id', timeMs: 1, penalty: 'none', createdAt: 4 }],
+        ),
+      );
+    const data = read();
+    expect(data.scrambles.map((s) => s.id)).toEqual([uuid, u('old-id')]);
+    expect(u('old-id')).toMatch(/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/);
+    expect(data.sets[0]?.scrambleIds).toEqual([u('old-id')]);
+    expect(data.solves[0]?.scrambleId).toBe(u('old-id'));
+    expect(read()).toEqual(data);
   });
+});
 
-  it('numbers scrambles saved without numbers by creation order', () => {
+describe('parseImport scramble numbers', () => {
+  it('numbers scrambles by creation order, whatever numbers the file gives', () => {
     const data = parseImport(
       exportJson([
+        { id: 'c', scramble: SEQUENCE, createdAt: 3, number: 3 },
+        { id: 'a', scramble: SEQUENCE, createdAt: 1, number: 1 },
         { id: 'b', scramble: SEQUENCE, createdAt: 2 },
-        { id: 'a', scramble: SEQUENCE, createdAt: 1 },
       ]),
     );
     expect(data.scrambles.map((s) => [s.id, s.number])).toEqual([
-      ['a', 1],
-      ['b', 2],
+      [u('a'), 1],
+      [u('b'), 2],
+      [u('c'), 3],
     ]);
   });
 
-  it('numbers unnumbered scrambles after the highest number in use', () => {
+  it('gives scrambles made in the same millisecond distinct times, in the order of their numbers', () => {
     const data = parseImport(
       exportJson([
-        { id: 'a', scramble: SEQUENCE, createdAt: 1 },
-        { id: 'b', scramble: SEQUENCE, createdAt: 2, number: 5 },
+        { id: 'b', scramble: SEQUENCE, createdAt: 5, number: 2 },
+        { id: 'a', scramble: SEQUENCE, createdAt: 5, number: 1 },
+        { id: 'c', scramble: SEQUENCE, createdAt: 5, number: 3 },
+        { id: 'd', scramble: SEQUENCE, createdAt: 6, number: 4 },
       ]),
     );
-    expect(data.scrambles.map((s) => s.number)).toEqual([6, 5]);
+    expect(data.scrambles.map((s) => [s.id, s.createdAt, s.number])).toEqual([
+      [u('a'), 5, 1],
+      [u('b'), 6, 2],
+      [u('c'), 7, 3],
+      [u('d'), 8, 4],
+    ]);
   });
 });
 
@@ -67,8 +93,8 @@ describe('parseImport F2L solutions', () => {
       ]),
     );
     expect(data.f2lSolutions).toEqual([
-      { id: 'a', caseId: 'f2l-1', alg: "R U R'", createdAt: 1 },
-      { id: 'b', caseId: 'f2l-35', alg: "U' R' F R F' R U' R'", source: "U' (R' F R F')", note: 'sledge', createdAt: 2 },
+      { id: u('a'), caseId: 'f2l-1', alg: "R U R'", createdAt: 1 },
+      { id: u('b'), caseId: 'f2l-35', alg: "U' R' F R F' R U' R'", source: "U' (R' F R F')", note: 'sledge', createdAt: 2 },
     ]);
   });
 
@@ -86,7 +112,7 @@ describe('parseImport sets', () => {
     const data = parseImport(
       exportJson(THREE, [{ id: 's1', createdAt: 5, number: 1, scrambleIds: ['c', 'a'], title: 'Final', notes: 'n' }]),
     );
-    expect(data.sets).toEqual([{ id: 's1', createdAt: 5, number: 1, scrambleIds: ['c', 'a'], title: 'Final', notes: 'n' }]);
+    expect(data.sets).toEqual([{ id: u('s1'), createdAt: 5, number: 1, scrambleIds: [u('c'), u('a')], title: 'Final', notes: 'n' }]);
   });
 
   it('drops unknown and duplicate scramble ids and scrambles claimed by an earlier set', () => {
@@ -98,8 +124,8 @@ describe('parseImport sets', () => {
       ]),
     );
     expect(data.sets.map((s) => [s.id, s.scrambleIds])).toEqual([
-      ['s1', ['a', 'b']],
-      ['s2', ['c']],
+      [u('s1'), [u('a'), u('b')]],
+      [u('s2'), [u('c')]],
     ]);
   });
 
@@ -111,8 +137,8 @@ describe('parseImport sets', () => {
       ]),
     );
     expect(data.sets.map((s) => [s.id, s.number])).toEqual([
-      ['s1', 1],
-      ['s2', 2],
+      [u('s1'), 1],
+      [u('s2'), 2],
     ]);
   });
 
@@ -125,7 +151,7 @@ describe('parseImport solve penalties', () => {
   const solve = { id: 's', scrambleId: 'a', timeMs: 10000, penalty: 'plus2', createdAt: 1 };
 
   it('reads a solve without an inspection penalty as timed without inspection', () => {
-    expect(parseImport(exportJson(THREE, undefined, [solve])).solves).toEqual([solve]);
+    expect(parseImport(exportJson(THREE, undefined, [solve])).solves).toEqual([{ ...solve, id: u('s'), scrambleId: u('a') }]);
   });
 
   it('keeps an inspection penalty', () => {

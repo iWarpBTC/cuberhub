@@ -115,6 +115,53 @@ const en = {
     failed: 'Import failed.',
   },
 
+  sync: {
+    title: 'Sync',
+    intro:
+      'Your data lives on this device and the app works without a connection. Sync keeps it the same on your other devices. Changes are encrypted before they leave the device, so the server that passes them on cannot read them.',
+    isOff: 'Sync is off. Everything stays on this device.',
+    turnOn: 'Turn on sync',
+    turnOff: 'Turn off sync',
+    status: {
+      NoRelays: 'Connecting…',
+      Syncing: 'Syncing…',
+      Synced: 'Synced. Changes made here reach your other devices, and theirs come here.',
+      Disconnected: "Can't reach the sync server. Changes will sync once the connection is back.",
+      Quota: 'Sync is paused because the sync server is full.',
+      Error: (type: string) => `Sync error: ${type}.`,
+    },
+    /** The status in a word or two, next to the link to this page. */
+    short: { off: 'off', syncing: 'syncing…', synced: 'on', disconnected: 'no connection', error: 'error' },
+    server: (host: string) => `Sync server: ${host}`,
+    notKept:
+      'This browser does not keep the data on the device (a private window?). What has not synced is lost when the tab closes.',
+    key: {
+      title: 'Connect another device',
+      explain:
+        'These 24 words are the key to your data. On the other device, open Sync, choose “Join another device” and enter them. Whoever has the words can read and change your data, so keep them to yourself.',
+      show: 'Show the key',
+      hide: 'Hide the key',
+      copy: 'Copy',
+      copied: 'Copied',
+    },
+    join: {
+      title: 'Join another device',
+      explain: 'Enter the key shown by the device that has your data. This device then shows the same data and keeps in sync with it.',
+      label: 'The key (24 words)',
+      bring: (scrambles: number) => `Add what is on this device (scrambles: ${scrambles}) to that data`,
+      leaveBehind: 'Without this, what is on this device now will no longer be shown.',
+      submit: 'Join',
+      invalid: 'These are not the words of a key. Check that all 24 are there, in the right order.',
+      same: 'This is the key of this device.',
+    },
+    errors: {
+      UnsupportedDbVersionError: 'Your data needs a newer version of this app. Close all tabs of the app and open it again.',
+      DatabaseHeldError: 'Your data is still in use elsewhere. Close the other tabs of this app or restart the browser, then reload this page.',
+      OtherBuildRunningError: 'The app is open in another tab in a different version. Close that tab to continue.',
+      UnknownError: 'Something went wrong with the data. Close all tabs of this app and open it again.',
+    },
+  },
+
   dialog: { cancel: 'Cancel' },
 
   customScramble: {
@@ -715,6 +762,52 @@ const cs: Messages = {
       'invalid-data': 'Neplatná data: chybí pole „scrambles“ a „solves“.',
     },
     failed: 'Import se nezdařil.',
+  },
+
+  sync: {
+    title: 'Synchronizace',
+    intro:
+      'Tvoje data jsou uložená v tomto zařízení a aplikace funguje i bez připojení. Synchronizace je udržuje stejná i na tvých dalších zařízeních. Změny se šifrují ještě v zařízení, takže server, který je předává, je nepřečte.',
+    isOff: 'Synchronizace je vypnutá. Vše zůstává jen v tomto zařízení.',
+    turnOn: 'Zapnout synchronizaci',
+    turnOff: 'Vypnout synchronizaci',
+    status: {
+      NoRelays: 'Připojuji…',
+      Syncing: 'Synchronizuji…',
+      Synced: 'Synchronizováno. Změny odsud se dostanou na tvá další zařízení a jejich změny sem.',
+      Disconnected: 'Server pro synchronizaci není dostupný. Změny se odešlou, jakmile se spojení obnoví.',
+      Quota: 'Synchronizace je pozastavená, protože server je plný.',
+      Error: (type) => `Chyba synchronizace: ${type}.`,
+    },
+    short: { off: 'vypnutá', syncing: 'probíhá…', synced: 'zapnutá', disconnected: 'bez spojení', error: 'chyba' },
+    server: (host) => `Server pro synchronizaci: ${host}`,
+    notKept:
+      'Tento prohlížeč data v zařízení neuchovává (anonymní okno?). Co se nestihne synchronizovat, se po zavření záložky ztratí.',
+    key: {
+      title: 'Připojit další zařízení',
+      explain:
+        'Těchto 24 slov je klíč k tvým datům. Na druhém zařízení otevři Synchronizaci, zvol „Připojit se k jinému zařízení“ a zadej je. Kdo slova má, může tvoje data číst i měnit, proto je nikomu neukazuj.',
+      show: 'Zobrazit klíč',
+      hide: 'Skrýt klíč',
+      copy: 'Kopírovat',
+      copied: 'Zkopírováno',
+    },
+    join: {
+      title: 'Připojit se k jinému zařízení',
+      explain: 'Zadej klíč, který ukazuje zařízení s tvými daty. Toto zařízení pak zobrazí stejná data a bude se s ním synchronizovat.',
+      label: 'Klíč (24 slov)',
+      bring: (scrambles) => `Přidat k těm datům i to, co je v tomto zařízení (zamíchání: ${scrambles})`,
+      leaveBehind: 'Bez toho se to, co je v tomto zařízení teď, přestane zobrazovat.',
+      submit: 'Připojit',
+      invalid: 'Tohle nejsou slova klíče. Zkontroluj, že jich je všech 24 a ve správném pořadí.',
+      same: 'Tohle je klíč tohoto zařízení.',
+    },
+    errors: {
+      UnsupportedDbVersionError: 'Tvoje data potřebují novější verzi aplikace. Zavři všechny záložky s aplikací a otevři ji znovu.',
+      DatabaseHeldError: 'Tvoje data se ještě používají jinde. Zavři ostatní záložky s aplikací nebo restartuj prohlížeč a stránku načti znovu.',
+      OtherBuildRunningError: 'Aplikace je otevřená v jiné záložce v jiné verzi. Zavři tu záložku a pokračuj.',
+      UnknownError: 'S daty se něco pokazilo. Zavři všechny záložky s aplikací a otevři ji znovu.',
+    },
   },
 
   dialog: { cancel: 'Zrušit' },

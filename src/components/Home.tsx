@@ -4,6 +4,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { CHEATSHEET_TABS, TRAINING_SCREENS, routeHref, type CheatsheetTab, type Route, type Section } from '../lib/route';
 import { useStore } from '../store/StoreContext';
 import { APP_NAME, SECTION_ACCENT, SectionIcon, sectionRoute } from './sections';
+import { SyncLink } from './SyncLink';
 
 interface Shortcut {
   label: string;
@@ -104,6 +105,7 @@ export function Home({ cheatsheetTab }: { cheatsheetTab: CheatsheetTab }) {
             })}
           />
         </ul>
+        <SyncLink className="self-center" />
       </div>
     </main>
   );
