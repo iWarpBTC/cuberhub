@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EXPORT_FORMAT, EXPORT_VERSION, ImportError, parseImport } from './storage';
+import { EXPORT_FORMAT, EXPORT_VERSION, ImportError, LEGACY_EXPORT_FORMAT, migrateLegacyStorage, parseImport } from './storage';
 
 const SEQUENCE = "R U R' U'";
 
@@ -136,5 +136,68 @@ describe('parseImport solve penalties', () => {
   it('drops a solve with an unknown inspection penalty', () => {
     const { solves } = parseImport(exportJson(THREE, undefined, [{ ...solve, inspectionPenalty: 'plus4' }]));
     expect(solves).toEqual([]);
+  });
+});
+
+describe('parseImport format', () => {
+  const file = (format: string) => JSON.stringify({ format, version: EXPORT_VERSION, scrambles: THREE, solves: [] });
+
+  it('still reads a file exported under the former name', () => {
+    expect(parseImport(file(LEGACY_EXPORT_FORMAT)).scrambles).toHaveLength(3);
+  });
+
+  it('rejects a file of another format', () => {
+    expect(() => parseImport(file('cstimer'))).toThrow('not-export');
+  });
+});
+
+/** An in-memory `Storage`; `quota` caps the total length of the stored values. */
+function memoryStorage(initial: Record<string, string>, quota = Infinity): Storage {
+  const items = new Map(Object.entries(initial));
+  return {
+    get length() {
+      return items.size;
+    },
+    key: (index) => [...items.keys()][index] ?? null,
+    getItem: (key) => items.get(key) ?? null,
+    setItem: (key, value) => {
+      const others = [...items].reduce((sum, [k, v]) => (k === key ? sum : sum + v.length), 0);
+      if (others + value.length > quota) throw new Error('QuotaExceededError');
+      items.set(key, value);
+    },
+    removeItem: (key) => void items.delete(key),
+    clear: () => items.clear(),
+  };
+}
+
+function contents(storage: Storage): Record<string, string | null> {
+  return Object.fromEntries(Array.from({ length: storage.length }, (_, i) => [storage.key(i)!, storage.getItem(storage.key(i)!)]));
+}
+
+describe('migrateLegacyStorage', () => {
+  it('moves every key of the former name to the new prefix', () => {
+    const storage = memoryStorage({ 'rubik-timer:data': '{"scrambles":[]}', 'rubik-timer:lang': 'cs', 'rubik-timer:dry-practice': '{}' });
+    migrateLegacyStorage(storage);
+    expect(contents(storage)).toEqual({ 'cuberhub:data': '{"scrambles":[]}', 'cuberhub:lang': 'cs', 'cuberhub:dry-practice': '{}' });
+  });
+
+  it('keeps a value already stored under the new name', () => {
+    const storage = memoryStorage({ 'rubik-timer:lang': 'cs', 'cuberhub:lang': 'en' });
+    migrateLegacyStorage(storage);
+    expect(contents(storage)).toEqual({ 'cuberhub:lang': 'en' });
+  });
+
+  it('leaves the keys of other apps alone and changes nothing on a second run', () => {
+    const storage = memoryStorage({ 'rubik-timer:lang': 'cs', 'other-app:lang': 'de' });
+    migrateLegacyStorage(storage);
+    migrateLegacyStorage(storage);
+    expect(contents(storage)).toEqual({ 'other-app:lang': 'de', 'cuberhub:lang': 'cs' });
+  });
+
+  it('moves data that would not fit the quota twice', () => {
+    const data = 'x'.repeat(80);
+    const storage = memoryStorage({ 'rubik-timer:data': data }, 100);
+    migrateLegacyStorage(storage);
+    expect(contents(storage)).toEqual({ 'cuberhub:data': data });
   });
 });

@@ -291,7 +291,7 @@ export function F2LTrainer({
         return;
       }
       e.preventDefault();
-      // The cheatsheet behind also listens for Escape; this overlay handles it first.
+      // The page behind must not react to the keys this overlay uses.
       e.stopPropagation();
     };
     window.addEventListener('keydown', onKeyDown, true);
@@ -304,7 +304,7 @@ export function F2LTrainer({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[60] flex justify-center bg-black/70 sm:items-center sm:p-6"
+      className="fixed inset-x-0 top-(--header-h) bottom-0 z-[60] flex justify-center bg-black/70 sm:items-center sm:p-6"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -342,7 +342,7 @@ export function F2LTrainer({
           >
             {favorite ? '★' : '☆'}
           </button>
-          <button type="button" onClick={onClose} aria-label={t.cheatsheet.close} className={ICON_BUTTON}>
+          <button type="button" onClick={onClose} aria-label={t.f2l.back} className={ICON_BUTTON}>
             ✕
           </button>
         </div>

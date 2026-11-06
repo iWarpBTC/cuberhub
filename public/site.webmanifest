@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "Rubik Timer",
-  "short_name": "Rubik Timer",
+  "name": "Cuber Hub",
+  "short_name": "Cuber Hub",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

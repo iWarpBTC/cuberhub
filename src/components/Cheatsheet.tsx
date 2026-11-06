@@ -1,21 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ALGORITHM_GROUPS, ALGORITHMS, TRIGGERS, type Algorithm } from '../lib/algorithms';
 import { useLanguage } from '../i18n/LanguageContext';
 import { F2L_CASES, F2L_GROUPS, LAST_LAYER_STICKERS, f2lCasePerm, type F2LCase } from '../lib/f2l';
 import { NOTATION, type NotationMove } from '../lib/notation';
+import { CHEATSHEET_TABS, routeHref, type CheatsheetTab } from '../lib/route';
 import { loadFavoriteAlgorithms, loadFavoritesOnly, saveFavoriteAlgorithms, saveFavoritesOnly } from '../lib/storage';
-import { CUBE_COLORS, SIDE_FACES } from '../lib/colors';
 import { CubeIso } from './CubeIso';
 import { F2LTrainer, useCaseDescription } from './F2LTrainer';
 import { LastLayerDiagram } from './LastLayerDiagram';
 import { useDispatch, useStore } from '../store/StoreContext';
 import type { F2LSolution } from '../types';
 import { MoveDiagram } from './MoveDiagram';
-
-export type CheatsheetTab = 'moves' | 'f2l' | 'algorithms';
-
-const TABS: readonly CheatsheetTab[] = ['moves', 'f2l', 'algorithms'];
 
 /** Favorite algorithm ids and the "favorites only" filter, remembered across sessions and shared by the tabs. */
 function useFavorites() {
@@ -117,53 +112,20 @@ function MoveCard({ move, name, description, shape }: NotationMove) {
   );
 }
 
-/**
- * The belt of side colours with white down, as a quiet reminder of which
- * colour sits left and right of which: blue, red, green, orange, round and
- * round (the faded ends show the belt continuing). Explained on hover.
- */
-function ColorBand() {
-  const { t } = useLanguage();
-  const cells = [...SIDE_FACES.slice(2), ...SIDE_FACES, ...SIDE_FACES.slice(0, 2)].slice(0, 6);
-  return (
-    <div
-      role="img"
-      aria-label={t.cheatsheet.colorBand}
-      title={t.cheatsheet.colorBand}
-      className="shrink-0 self-center sm:self-start sm:pt-1"
-    >
-      <div className="mx-auto h-0.5 w-[70px] rounded-full" style={{ background: CUBE_COLORS.U }} />
-      <div className="my-1 flex gap-0.5">
-        {cells.map((face, i) => (
-          <span
-            key={i}
-            className={`h-4 w-4 rounded-sm${i === 0 || i === cells.length - 1 ? ' opacity-55' : ''}`}
-            style={{ background: CUBE_COLORS[face] }}
-          />
-        ))}
-      </div>
-      <div className="mx-auto h-0.5 w-[70px] rounded-full" style={{ background: CUBE_COLORS.D }} />
-    </div>
-  );
-}
-
 function MovesTab() {
   const { t, l } = useLanguage();
   const intro = t.cheatsheet.movesIntro;
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:gap-6">
-        <p className="text-sm text-neutral-400">
-          {intro.before}
-          <strong className="font-medium text-neutral-200">{intro.clockwise}</strong>
-          {intro.middle}
-          <span className="font-mono text-neutral-200">R'</span>
-          {intro.prime}
-          <span className="font-mono text-neutral-200">2</span>
-          {intro.after}
-        </p>
-        <ColorBand />
-      </div>
+      <p className="text-sm text-neutral-400">
+        {intro.before}
+        <strong className="font-medium text-neutral-200">{intro.clockwise}</strong>
+        {intro.middle}
+        <span className="font-mono text-neutral-200">R'</span>
+        {intro.prime}
+        <span className="font-mono text-neutral-200">2</span>
+        {intro.after}
+      </p>
       {NOTATION.map((group) => (
         <section key={group.id}>
           <h3 className="text-xs uppercase tracking-wide text-neutral-500">{l(group.title)}</h3>
@@ -376,76 +338,32 @@ function AlgorithmsTab() {
   );
 }
 
-export function Cheatsheet({
-  tab,
-  onTabChange,
-  onClose,
-}: {
-  tab: CheatsheetTab;
-  onTabChange: (tab: CheatsheetTab) => void;
-  onClose: () => void;
-}) {
+/** The cheatsheet page: moves, F2L cases and last-layer algorithms, one tab each (the tab is part of the URL). */
+export function Cheatsheet({ tab }: { tab: CheatsheetTab }) {
   const { t } = useLanguage();
-  const closeRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    closeRef.current?.focus();
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex justify-center bg-black/60 sm:items-center sm:p-6"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={t.cheatsheet.title}
-        className="flex h-full w-full flex-col bg-neutral-950 sm:max-w-5xl sm:rounded-lg sm:border sm:border-neutral-800 sm:shadow-xl"
-      >
-        <div className="flex items-center gap-2 border-b border-neutral-800 px-3 py-2">
-          <h2 className="mr-2 hidden text-sm font-semibold text-neutral-100 sm:block">{t.cheatsheet.title}</h2>
-          <div role="tablist" aria-label={t.cheatsheet.sections} className="flex rounded-md border border-neutral-800 p-0.5">
-            {TABS.map((id) => (
-              <button
+  return (
+    <main aria-label={t.cheatsheet.title} className="flex min-h-0 flex-1 flex-col">
+      <div className="shrink-0 border-b border-neutral-800">
+        <div className="mx-auto flex max-w-5xl px-3 py-2">
+          <nav aria-label={t.cheatsheet.sections} className="flex rounded-md border border-neutral-800 p-0.5">
+            {CHEATSHEET_TABS.map((id) => (
+              <a
                 key={id}
-                type="button"
-                role="tab"
-                aria-selected={tab === id}
-                onClick={() => onTabChange(id)}
+                href={routeHref({ page: 'cheatsheet', tab: id })}
+                aria-current={tab === id ? 'page' : undefined}
                 className={`rounded px-3 py-1 text-sm ${
                   tab === id ? 'bg-neutral-800 text-neutral-100' : 'text-neutral-400 hover:text-neutral-200'
                 }`}
               >
                 {t.cheatsheet[id]}
-              </button>
+              </a>
             ))}
-          </div>
-          <button
-            ref={closeRef}
-            type="button"
-            onClick={onClose}
-            aria-label={t.cheatsheet.close}
-            className="ml-auto rounded-md px-2.5 py-1.5 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100"
-          >
-            ✕
-          </button>
-        </div>
-        <div key={tab} role="tabpanel" className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
-          {tab === 'moves' ? <MovesTab /> : tab === 'f2l' ? <F2LTab /> : <AlgorithmsTab />}
+          </nav>
         </div>
       </div>
-    </div>,
-    document.body,
+      <div key={tab} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div className="mx-auto max-w-5xl p-4">{tab === 'moves' ? <MovesTab /> : tab === 'f2l' ? <F2LTab /> : <AlgorithmsTab />}</div>
+      </div>
+    </main>
   );
 }

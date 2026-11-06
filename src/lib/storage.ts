@@ -15,18 +15,51 @@ import {
   type TimeSetting,
 } from './dryPractice';
 
-const STORAGE_KEY = 'rubik-timer:data';
-const ACTIVE_SCRAMBLE_KEY = 'rubik-timer:active-scramble';
-const ACTIVE_SET_KEY = 'rubik-timer:active-set';
-const LIST_OPEN_KEY = 'rubik-timer:list-open';
-const LANG_KEY = 'rubik-timer:lang';
-const FAVORITE_ALGS_KEY = 'rubik-timer:favorite-algorithms';
-const FAVORITES_ONLY_KEY = 'rubik-timer:favorite-algorithms-only';
-const INSPECTION_KEY = 'rubik-timer:inspection';
-const DRY_PRACTICE_KEY = 'rubik-timer:dry-practice';
+const KEY_PREFIX = 'cuberhub:';
+/** The prefix of the keys written while the app was called Rubik Timer. */
+const LEGACY_KEY_PREFIX = 'rubik-timer:';
 
-export const EXPORT_FORMAT = 'rubik-timer';
+const STORAGE_KEY = `${KEY_PREFIX}data`;
+const ACTIVE_SCRAMBLE_KEY = `${KEY_PREFIX}active-scramble`;
+const ACTIVE_SET_KEY = `${KEY_PREFIX}active-set`;
+const LIST_OPEN_KEY = `${KEY_PREFIX}list-open`;
+const LANG_KEY = `${KEY_PREFIX}lang`;
+const FAVORITE_ALGS_KEY = `${KEY_PREFIX}favorite-algorithms`;
+const FAVORITES_ONLY_KEY = `${KEY_PREFIX}favorite-algorithms-only`;
+const INSPECTION_KEY = `${KEY_PREFIX}inspection`;
+const DRY_PRACTICE_KEY = `${KEY_PREFIX}dry-practice`;
+
+export const EXPORT_FORMAT = 'cuberhub';
+/** The format of files exported while the app was called Rubik Timer; still imported. */
+export const LEGACY_EXPORT_FORMAT = 'rubik-timer';
 export const EXPORT_VERSION = 1;
+
+/**
+ * Moves everything stored under the app's former name (Rubik Timer) to the
+ * current keys, so the rename loses no data. Call it before anything is
+ * read. A value already stored under the new name wins, and with no legacy
+ * keys left a second run changes nothing.
+ */
+export function migrateLegacyStorage(storage: Storage = localStorage): void {
+  const legacyKeys: string[] = [];
+  for (let i = 0; i < storage.length; i++) {
+    const key = storage.key(i);
+    if (key !== null && key.startsWith(LEGACY_KEY_PREFIX)) legacyKeys.push(key);
+  }
+  for (const key of legacyKeys) {
+    const value = storage.getItem(key);
+    const target = KEY_PREFIX + key.slice(LEGACY_KEY_PREFIX.length);
+    // Removed before the copy is written: both together might not fit the quota.
+    storage.removeItem(key);
+    if (value === null || storage.getItem(target) !== null) continue;
+    try {
+      storage.setItem(target, value);
+    } catch {
+      // Writing failed after all; put the value back rather than lose it.
+      storage.setItem(key, value);
+    }
+  }
+}
 
 export interface ExportFile {
   format: typeof EXPORT_FORMAT;
@@ -371,7 +404,7 @@ export function parseImport(json: string): AppData {
   } catch {
     throw new ImportError('not-json');
   }
-  if (!isRecord(value) || value.format !== EXPORT_FORMAT) {
+  if (!isRecord(value) || (value.format !== EXPORT_FORMAT && value.format !== LEGACY_EXPORT_FORMAT)) {
     throw new ImportError('not-export');
   }
   if (value.version !== EXPORT_VERSION) {

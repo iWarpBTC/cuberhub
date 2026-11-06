@@ -21,10 +21,36 @@ const en = {
     hideList: 'Hide scramble list',
     new: 'New',
     newSet: 'Set of 5',
+  },
+
+  brand: {
+    home: 'Cuber Hub: home',
+    colorBand:
+      'The band in the logo is the belt of side colours with white down: blue, red, green, orange, round and round. Facing any colour, the one on your right is the next in the band, the one on your left the previous. The darker tiles at the ends show the belt going on.',
+  },
+
+  nav: {
+    sections: 'Sections',
+    timer: 'Timer',
     cheatsheet: 'Cheatsheet',
-    cheatsheetTitle: 'Moves and algorithms (?)',
-    dryPractice: 'Dry practice',
-    dryPracticeTitle: 'Cross training without a cube',
+    training: 'Training',
+  },
+
+  home: {
+    tagline: 'Time your solves, train on purpose and keep the algorithms at hand.',
+    timer: {
+      description: 'Scrambles, timing and the averages of your solves.',
+      start: 'Start the timer',
+      continue: 'Continue in the timer',
+    },
+    cheatsheet: {
+      description: 'Move notation, all 41 F2L cases, 2-look OLL and every PLL.',
+      open: 'Open the cheatsheet',
+    },
+    training: {
+      description: 'Cross inspection drills that need no cube in your hands, with levels that adapt to you.',
+      open: 'All trainings',
+    },
   },
 
   list: {
@@ -82,7 +108,7 @@ const en = {
     confirm: 'Import',
     errors: {
       'not-json': 'Not a valid JSON file.',
-      'not-export': 'Not a rubik-timer export file.',
+      'not-export': 'Not a Cuber Hub export file.',
       version: 'Unsupported export version.',
       'invalid-data': 'Invalid data: expected "scrambles" and "solves" arrays.',
     } satisfies Record<ImportErrorCode, string>,
@@ -195,7 +221,6 @@ const en = {
   cheatsheet: {
     title: 'Cheatsheet',
     sections: 'Cheatsheet sections',
-    close: 'Close cheatsheet',
     moves: 'Moves',
     algorithms: 'Algorithms',
     movesIntro: {
@@ -205,8 +230,6 @@ const en = {
       prime: ', “R prime”) turns it counterclockwise, a ',
       after: ' turns it twice (180°). Blue marks the layers that move.',
     },
-    colorBand:
-      'Side colours with white down, going round: blue, red, green, orange. Facing any colour, the one on your right is the next in the band, the one on your left the previous.',
     algorithmsIntro:
       'Pictures show the top layer from above (front at the bottom), yellow on top and green in front. Hold the cube like the picture, then do the algorithm; arrows show where pieces go. A move in parentheses at the end is the final turn of the top layer.',
     triggers: 'Triggers',
@@ -286,9 +309,8 @@ const en = {
   },
 
   dry: {
-    title: 'Dry practice',
-    close: 'Close dry practice',
-    back: 'Back to the modes',
+    title: 'Training',
+    back: 'Back to the trainings',
     intro:
       'Inspection training without a cube in your hands: find the white edges, follow them through moves in your head and plan the cross before anything turns. Each mode has levels that adapt to how you do: three right in a row move you up, three wrong in a row move you down.',
     cubeHidden: 'The cube is hidden',
@@ -601,10 +623,36 @@ const cs: Messages = {
     hideList: 'Skrýt seznam zamíchání',
     new: 'Nové',
     newSet: 'Pětice',
+  },
+
+  brand: {
+    home: 'Cuber Hub: domů',
+    colorBand:
+      'Pás v logu ukazuje barvy stran při bílé dole, dokola: modrá, červená, zelená, oranžová. Když se díváš na kteroukoli barvu, napravo od ní je další v pásu, nalevo předchozí. Tmavší krajní dílky značí, že pás pokračuje dál.',
+  },
+
+  nav: {
+    sections: 'Sekce',
+    timer: 'Timer',
     cheatsheet: 'Tahák',
-    cheatsheetTitle: 'Tahy a algoritmy (?)',
-    dryPractice: 'Sušení',
-    dryPracticeTitle: 'Trénink kříže bez kostky',
+    training: 'Trénink',
+  },
+
+  home: {
+    tagline: 'Měř si složení, trénuj cíleně a měj algoritmy po ruce.',
+    timer: {
+      description: 'Zamíchání, měření času a průměry tvých složení.',
+      start: 'Spustit timer',
+      continue: 'Pokračovat v timeru',
+    },
+    cheatsheet: {
+      description: 'Notace tahů, všech 41 případů F2L, 2-look OLL a všechna PLL.',
+      open: 'Otevřít tahák',
+    },
+    training: {
+      description: 'Cvičení inspekce kříže bez kostky v ruce, s úrovněmi, které se ti přizpůsobují.',
+      open: 'Všechny tréninky',
+    },
   },
 
   list: {
@@ -662,7 +710,7 @@ const cs: Messages = {
     confirm: 'Importovat',
     errors: {
       'not-json': 'Soubor není platný JSON.',
-      'not-export': 'Soubor není export z rubik-timer.',
+      'not-export': 'Soubor není export z Cuber Hubu.',
       version: 'Nepodporovaná verze exportu.',
       'invalid-data': 'Neplatná data: chybí pole „scrambles“ a „solves“.',
     },
@@ -774,7 +822,6 @@ const cs: Messages = {
   cheatsheet: {
     title: 'Tahák',
     sections: 'Části taháku',
-    close: 'Zavřít tahák',
     moves: 'Tahy',
     algorithms: 'Algoritmy',
     movesIntro: {
@@ -784,8 +831,6 @@ const cs: Messages = {
       prime: ', „R s čárkou“) ji otočí proti směru, ',
       after: ' dvakrát (o 180°). Modře jsou vrstvy, které se pohnou.',
     },
-    colorBand:
-      'Barvy stran při bílé dole, dokola: modrá, červená, zelená, oranžová. Když se díváš na kteroukoli barvu, napravo od ní je další v pásu, nalevo předchozí.',
     algorithmsIntro:
       'Obrázky ukazují horní vrstvu shora (přední strana dole), žlutá nahoře a zelená vpředu. Drž kostku jako na obrázku a proveď algoritmus; šipky ukazují, kam se kostičky přesunou. Tah v závorce na konci je závěrečné otočení horní vrstvy.',
     triggers: 'Triggery',
@@ -865,9 +910,8 @@ const cs: Messages = {
   },
 
   dry: {
-    title: 'Sušení',
-    close: 'Zavřít sušení',
-    back: 'Zpět na režimy',
+    title: 'Trénink',
+    back: 'Zpět na tréninky',
     intro:
       'Trénink inspekce bez kostky v ruce: najdi bílé hrany, sleduj je v hlavě přes tahy a naplánuj kříž dřív, než se cokoli otočí. Každý režim má úrovně, které se přizpůsobují: tři správně za sebou tě posunou výš, tři špatně za sebou níž.',
     cubeHidden: 'Kostka je skrytá',

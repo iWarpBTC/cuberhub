@@ -1,6 +1,26 @@
-# Rubik Timer
+# Cuber Hub
 
-A minimal, offline, single-user training timer for the 3x3x3 Rubik's Cube.
+A minimal, offline, single-user training hub for the 3x3x3 Rubik's Cube
+(formerly Rubik Timer): a **timer**, a **cheatsheet** and **training**
+without a cube, side by side.
+
+## Navigation
+
+The home page is a signpost to the three sections; none of them is the
+default. The header stays on top of every page with the sections, the
+language switch and the logo, which is a link home. The colour band in the
+logo is also a reminder of the belt of side colours with white down (blue,
+red, green, orange, round and round; the darker tiles at the ends show the
+belt going on): facing any colour, the one on your right is the next in the
+band. Hover the logo for the explanation; the home page spells it out.
+
+Every page has its own address in the URL hash, so the browser's back button
+works and a page can be bookmarked or opened directly: `#/timer`,
+`#/cheatsheet/f2l`, `#/training/cross-trainer`, … (`src/lib/route.ts`).
+While a solve is being timed the header fades out.
+
+## Timer
+
 The primary entity is the **scramble**: each scramble is a permanent object
 that can hold any number of solves, so you can practice the same scramble
 repeatedly and compare statistics per scramble.
@@ -41,8 +61,8 @@ npm run build    # typecheck + production build
 | Ctrl+G | New set of 5 scrambles |
 | ← / → | Previous / next scramble within the set (while the timer is idle) |
 | Ctrl+F | Focus search |
-| ? | Open the cheatsheet |
-| Esc | Cancel dialog / close cheatsheet |
+| ? | Open the cheatsheet (from the timer) |
+| Esc | Cancel dialog / leave a training for the training menu |
 
 While a solve is running the timer area turns green and the screen is kept on
 (Screen Wake Lock API; needs HTTPS or localhost, otherwise it is skipped).
@@ -66,26 +86,23 @@ one-move misalignment give +4. A DNF in either makes the solve a DNF.
 
 The layout works on phones: the scramble list becomes a drawer (the
 "Scrambles" button), and on wide screens it can be collapsed with the same
-button in the top bar.
+button in the bar above the timer.
 
 ## Languages
 
 The app is available in English and Czech. It starts in Czech when the
-browser prefers Czech, otherwise in English; the EN / CZ button in the top
-bar switches it, and the choice is remembered. UI strings live in
+browser prefers Czech, otherwise in English; the EN / CZ button in the
+header switches it, and the choice is remembered. UI strings live in
 `src/i18n/messages.ts` (the Czech dictionary is type-checked against the
 English one, so a missing translation fails the build); cheatsheet texts sit
 next to their data in `src/lib/algorithms.ts` and `src/lib/notation.ts`.
 
 ## Cheatsheet
 
-The "Cheatsheet" button (or `?`) opens a reference with three tabs:
+The Cheatsheet section (`?` from the timer) is a reference with three tabs:
 
 - **Moves** — face turns, slice moves (M E S), wide moves and cube rotations,
-  each drawn for the plain, prime (') and half (2) turn. The small colour
-  band next to the introduction is the belt of side colours with white down
-  (blue, red, green, orange, round and round): facing any colour, the one on
-  your right is the next in the band. Hover it for the explanation.
+  each drawn for the plain, prime (') and half (2) turn.
 - **F2L** — all 41 F2L cases (numbered as on rubiksplace.com), grouped by
   where the corner and edge of the pair are, each with a picture, a
   face-turn-only algorithm and a one-line description of the position.
@@ -138,10 +155,10 @@ transforms in `src/components/Cube3D.tsx`, using the sticker geometry of
 `src/lib/geometry.ts` (checked against the facelet simulation for every
 move).
 
-## Dry practice
+## Training
 
-The "Dry practice" button (Czech "Sušení") next to the cheatsheet opens a
-set of trainers for the cross inspection that need no cube in your hands:
+The Training section (Czech "Trénink") holds the trainers. So far these are
+the dry-practice ones for the cross inspection, which need no cube in your hands:
 everything happens on the 3D cube, and every answer is checked by the cube
 simulation. The cube is held white down, so the cross goes into the bottom
 layer; drag the cube or use "From above" / "From below" to look around it.
@@ -187,11 +204,11 @@ table computed once per edge set), so the optimum is exact;
 `src/lib/cross.test.ts` checks it against a brute-force search on short
 cases. Levels, scoring and the adaptive progress live in
 `src/lib/dryPractice.ts`, also unit-tested; the modes are the components in
-`src/components/dry/`.
+`src/components/training/`.
 
 ### Cross Trainer
 
-The first tile of the dry-practice menu is a guide, not a game: no levels,
+The first tile of the training menu is a guide, not a game: no levels,
 no points. For a random scramble (or one you type) it shows the shortest
 white cross and the one a person would rather plan, and explains every move
 on the 3D cube. The scramble is done like every scramble in the app, white
@@ -259,10 +276,14 @@ cubefreak.net and speedcubelab.com.
 
 ## Notes
 
-- All data lives in browser Local Storage; every change is saved immediately.
-- Export/Import uses a versioned JSON format (`format: "rubik-timer", version: 1`).
-  Importing replaces all stored data after confirmation. Files exported before
-  sets existed have no `sets` array and import as sets-free data.
+- All data lives in browser Local Storage under `cuberhub:` keys; every
+  change is saved immediately. Data saved while the app was called Rubik
+  Timer (`rubik-timer:` keys) is moved over on the first start
+  (`migrateLegacyStorage`).
+- Export/Import uses a versioned JSON format (`format: "cuberhub", version: 1`).
+  Importing replaces all stored data after confirmation. Files exported under
+  the former name (`format: "rubik-timer"`) still import, and files exported
+  before sets existed have no `sets` array and import as sets-free data.
 - Scrambles are random-move sequences (20 moves, WCA notation, no redundant
   consecutive faces) or typed by hand (`parseCustomScramble` tidies the input
   into the same notation). Swapping in a random-state generator later only
@@ -280,14 +301,19 @@ cubefreak.net and speedcubelab.com.
 - `src/lib/` — pure, unit-tested logic: scramble generation, facelet-level
   cube simulation (net rendering and the cheatsheet), the edge model and
   optimal cross solver with the dry-practice levels and scoring, statistics,
-  formatting, storage, and the notation / algorithm data.
+  formatting, storage, the routes, and the notation / algorithm data.
 - `src/i18n/` — language detection, the language context and UI strings.
 - `src/store/` — single reducer store (React context) persisted to Local
   Storage on every change.
 - `src/hooks/useTimer.ts` — the timer state machine (space bar and pointer,
   with the optional inspection); `src/lib/inspection.ts` holds the WCA
   inspection rules.
-- `src/components/` — presentational components (scramble list with its
-  sets, set panel with the rounds table, cube net, stats, solve history,
-  dialogs, import/export, cheatsheet and its diagrams, the 3D cube, the
-  F2L trainer and the dry-practice trainers in `components/dry/`).
+- `src/App.tsx` — the shell: the header on top of the page the URL names
+  (`src/hooks/useRoute.ts`).
+- `src/components/` — the header, the home page and the three section pages
+  (`TimerPage`, `Cheatsheet`, `training/Training`) with their parts: scramble
+  list with its sets, set panel with the rounds table, cube net, stats,
+  solve history, dialogs, import/export, the cheatsheet diagrams, the 3D
+  cube, the F2L trainer and the trainers in `components/training/`.
+- `src/assets/` — the logo and the colour band, copied from the brand
+  design.
