@@ -6,10 +6,12 @@ import {
   HOLD_ROTATION,
   MAX_EXTRA,
   analyzeCross,
+  evaluateAttempt,
   explainSolution,
   holdFront,
   holdMove,
   holdSpot,
+  parseSolution,
   scrambleWhiteDown,
   type MoveNote,
   type TrainerSolution,
@@ -295,4 +297,85 @@ describe('holds', () => {
     }
   });
 
+});
+
+describe("a solution of one's own", () => {
+  it('reads typed face turns and refuses anything else', () => {
+    expect(parseSolution("R' F  D2")).toEqual({ ok: true, moves: ["R'", 'F', 'D2'] });
+    expect(parseSolution("RUR'U'")).toEqual({ ok: true, moves: ['R', 'U', "R'", "U'"] });
+    expect(parseSolution('R R F')).toEqual({ ok: true, moves: ['R2', 'F'] });
+    expect(parseSolution('  ')).toEqual({ ok: false, reason: 'empty' });
+    expect(parseSolution("R R'")).toEqual({ ok: false, reason: 'empty' });
+    // Lowercase would be a wide move or a rotation, not a face turn.
+    expect(parseSolution('R u F')).toEqual({ ok: false, reason: 'invalid', token: 'u' });
+    expect(parseSolution("y R U")).toEqual({ ok: false, reason: 'invalid', token: 'y' });
+    expect(parseSolution('R M2 U')).toEqual({ ok: false, reason: 'invalid', token: 'M2' });
+  });
+
+  it('recognizes the recommended solution and ranks it first', () => {
+    for (const scramble of SCRAMBLES.slice(0, 10)) {
+      const analysis = analyzeCross(scramble);
+      const { recommended } = analysis;
+      const attempt = evaluateAttempt(analysis, recommended.handMoves, recommended.hold);
+      expect(attempt).toMatchObject({ solved: true, own: recommended.moves.length, finish: [], inPlace: 4, same: 'recommended', rank: 1, easierHold: null, reasons: [] });
+      expect(attempt.solution).toEqual(recommended);
+    }
+  });
+
+  it('takes the moves as turned in the hold they were given in', () => {
+    const analysis = analyzeCross(SCRAMBLES[1]!);
+    const { shortest } = analysis;
+    for (const hold of HOLDS) {
+      const attempt = evaluateAttempt(analysis, shortest.moves.map((move) => holdMove(move, hold)), hold);
+      expect(attempt.solved).toBe(true);
+      expect(attempt.solution.moves).toEqual(shortest.moves);
+      expect(attempt.solution.hold).toBe(hold);
+      expect(attempt.solution.handMoves).toEqual(shortest.moves.map((move) => holdMove(move, hold)));
+      // Held any other way than its best, the same solution costs at least as much, and the trainer says which hold is easier.
+      expect(attempt.solution.metrics.cost).toBeGreaterThanOrEqual(shortest.metrics.cost);
+      if (attempt.solution.metrics.cost > shortest.metrics.cost) expect(attempt.easierHold).toBe(shortest.hold);
+      else expect(attempt.easierHold).toBeNull();
+    }
+  });
+
+  it('measures a longer solution against the recommended one', () => {
+    for (const scramble of SCRAMBLES.slice(0, 10)) {
+      const analysis = analyzeCross(scramble);
+      const { recommended } = analysis;
+      // The recommended moves with a wasted turn of the top layer after the cross is done.
+      const attempt = evaluateAttempt(analysis, [...recommended.handMoves, 'U'], recommended.hold);
+      expect(attempt.solved).toBe(true);
+      expect(attempt.same).toBeNull();
+      expect(attempt.solution.metrics.moves).toBe(recommended.moves.length + 1);
+      expect(attempt.solution.extra).toBe(recommended.extra + 1);
+      expect(attempt.solution.metrics.cost).toBeGreaterThan(recommended.metrics.cost);
+      expect(attempt.rank).toBeGreaterThan(1);
+      // The wasted turn is its own step with nothing to say about the cross edges.
+      expect(attempt.solution.steps.at(-1)!.moves.at(-1)).toMatchObject({ move: 'U', notes: [] });
+    }
+  });
+
+  it('finishes a solution that stops short and says what was missing', () => {
+    for (const scramble of SCRAMBLES.slice(0, 10)) {
+      const analysis = analyzeCross(scramble);
+      const { shortest } = analysis;
+      const attempt = evaluateAttempt(analysis, shortest.handMoves.slice(0, -1), shortest.hold);
+      expect(attempt.solved).toBe(false);
+      expect(attempt.own).toBe(shortest.moves.length - 1);
+      // The edges counted as in are the ones the trainer's own reading had settled by then:
+      // all four when only the closing D turn is missing.
+      expect(attempt.inPlace).toBe(shortest.settledAt.filter((t) => t <= attempt.own).length);
+      if (shortest.moves.at(-1)![0] === 'D') expect(attempt.inPlace).toBe(4);
+      else expect(attempt.inPlace).toBeLessThan(4);
+      // One move from solved, there is only one way to finish.
+      expect(attempt.finish).toEqual(shortest.moves.slice(-1));
+      expect(attempt.solution.moves).toEqual(shortest.moves);
+      expect(countSolved(applyMoves(analysis.perm, attempt.solution.moves), CROSS_EDGES)).toBe(4);
+    }
+    // Moves that have nothing to do with the cross are finished with a whole solution.
+    const analysis = analyzeCross(SCRAMBLES[0]!);
+    const lost = evaluateAttempt(analysis, ['U'], 0);
+    expect(lost.solved).toBe(false);
+    expect(countSolved(applyMoves(analysis.perm, lost.solution.moves), CROSS_EDGES)).toBe(4);
+  });
 });

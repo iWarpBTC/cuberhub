@@ -233,6 +233,19 @@ still in front, and that is the cube the trainer shows
   ◀ ▶ (or the arrow keys) step through, Space plays, a click on a move
   jumps there.
 
+- **Your own solution.** Pick the colour you hold in front and enter a plan
+  with the move buttons or the keys (R U F L B D, Shift for the other way,
+  Backspace to take one back): the cube turns as you go, like in the F2L
+  trainer. A whole solution can also be typed or pasted (`R' F D2`). The
+  trainer checks it on the simulation and reads it exactly like its own
+  solutions. A solved cross gets its length
+  against the optimum, its place by effort among the solutions compared,
+  what the recommended solution does better, a hint when the same turns
+  would come easier in another hold, a column in the comparison table and
+  the full step-by-step notes on the cube. A plan that stops short is
+  finished with the solver's shortest continuation (shown in amber), so the
+  moves made can still be stepped through and read.
+
 Nothing is written per position and no AI is involved: `src/lib/crossTrainer.ts`
 plays each solution through on the edge model and the notes are the
 differences between the position before and after a move.

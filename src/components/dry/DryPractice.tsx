@@ -264,7 +264,7 @@ export function DryPractice({ onClose }: { onClose: () => void }) {
         role="dialog"
         aria-modal="true"
         aria-label={t.dry.title}
-        className="flex h-full w-full flex-col bg-neutral-950 sm:max-h-full sm:max-w-5xl sm:rounded-lg sm:border sm:border-neutral-800 sm:shadow-xl"
+        className="flex h-full w-full flex-col bg-neutral-950 sm:max-h-full sm:max-w-[100rem] sm:rounded-lg sm:border sm:border-neutral-800 sm:shadow-xl"
       >
         <div className="flex items-center gap-1 border-b border-neutral-800 px-2 py-2">
           {screen !== null && (
@@ -290,7 +290,7 @@ export function DryPractice({ onClose }: { onClose: () => void }) {
         ) : mode === null || Mode === null ? (
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
             <p className="mb-4 max-w-3xl text-sm text-neutral-400">{t.dry.intro}</p>
-            <ul className="grid gap-3 sm:grid-cols-2">
+            <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               <TrainerCard onOpen={() => setScreen('trainer')} />
               {DRY_MODES.map((m) => (
                 <ModeCard key={m} mode={m} progress={data.modes[m]} onOpen={() => setScreen(m)} />

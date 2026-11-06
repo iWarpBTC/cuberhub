@@ -188,14 +188,17 @@ export function PracticeCube({
   );
 }
 
-/** Cubie size for the 3D cube, smaller on phones. */
+/** Cubie size for the 3D cube: smaller on phones, larger where the dialog has a big screen to fill. */
 export function useCubieSize(): number {
-  return useMediaQuery('(min-width: 640px)') ? 54 : 40;
+  const desktop = useMediaQuery('(min-width: 640px)');
+  const wide = useMediaQuery('(min-width: 1280px) and (min-height: 760px)');
+  const huge = useMediaQuery('(min-width: 1536px) and (min-height: 900px)');
+  return huge ? 76 : wide ? 64 : desktop ? 54 : 40;
 }
 
 /** The side panel next to the cube. */
 export function Panel({ children }: { children: ReactNode }) {
-  return <div className="flex flex-col gap-4 border-t border-neutral-800 p-4 sm:w-80 sm:shrink-0 sm:border-t-0 sm:border-l">{children}</div>;
+  return <div className="flex flex-col gap-4 border-t border-neutral-800 p-4 sm:w-80 sm:shrink-0 sm:border-t-0 sm:border-l xl:w-96">{children}</div>;
 }
 
 export function TaskLayout({ children }: { children: ReactNode }) {

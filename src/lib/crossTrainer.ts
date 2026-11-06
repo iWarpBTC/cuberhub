@@ -37,6 +37,7 @@ import {
   EDGE_FACELETS,
   EDGE_SLOTS,
   FACE_MOVES,
+  applyMoves,
   crossEdgeSide,
   crossSolver,
   edgePlaceCode,
@@ -47,7 +48,8 @@ import {
 } from './cross';
 import type { Perm } from './f2l';
 import { faceOf } from './geometry';
-import { withoutRotations } from './rotations';
+import { joinMoves, withoutRotations } from './rotations';
+import { parseCustomScramble } from './scramble';
 
 /** How an edge lies, as far as getting it into the cross goes. */
 export type EdgeClass = 'placed' | 'topUp' | 'middle' | 'topSide' | 'bottomSide';
@@ -242,12 +244,13 @@ function turnsIn(moves: readonly number[], hold: Hold): { back: number; front: n
   return { back, front };
 }
 
-function metricsOf(trace: Trace): SolutionMetrics {
+/** The score of a solution, in the hold it turns best in or in the one it is said to be turned in. */
+function metricsOf(trace: Trace, heldIn?: Hold): SolutionMetrics {
   const { n, moves, places, settledAt } = trace;
   const metrics: SolutionMetrics = { moves: n, hold: 0, back: 0, front: 0, half: 0, tracking: 0, detours: 0, doubles: 0, longSetup: 0, cost: n };
   // The turns are as awkward as the hold makes them: take the hold they are easiest in.
   let easiest = Infinity;
-  for (const hold of HOLDS) {
+  for (const hold of heldIn === undefined ? HOLDS : [heldIn]) {
     // Turning the cube in inspection costs nothing; green in front only wins a tie.
     let effort = 0;
     for (let t = 0; t < n; t++) effort += HOLD_FACE_COST[hold]![moves[t]!]!;
@@ -557,20 +560,21 @@ function readOf(start: readonly number[]): InspectionRead {
   };
 }
 
-/** Something the recommended solution does better than the shortest one, with both counts. */
+/** Something one solution does better than another, with the count of the other (`before`) and its own (`after`). */
 export interface Reason {
   kind: 'back' | 'front' | 'half' | 'tracking' | 'detours' | 'doubles' | 'longSetup';
-  shortest: number;
-  recommended: number;
+  before: number;
+  after: number;
 }
 
 const REASON_KINDS: ReadonlyArray<Reason['kind']> = ['back', 'front', 'tracking', 'detours', 'doubles', 'longSetup', 'half'];
 
-function reasonsFor(shortest: SolutionMetrics, recommended: SolutionMetrics): Reason[] {
+/** What the solution with the metrics `better` wins over the one with `other`. */
+function reasonsFor(other: SolutionMetrics, better: SolutionMetrics): Reason[] {
   return REASON_KINDS.flatMap((kind) => {
-    const a = shortest[kind];
-    const b = recommended[kind];
-    return (kind === 'doubles' ? b > a : b < a) ? [{ kind, shortest: a, recommended: b }] : [];
+    const before = other[kind];
+    const after = better[kind];
+    return (kind === 'doubles' ? after > before : after < before) ? [{ kind, before, after }] : [];
   });
 }
 
@@ -583,6 +587,8 @@ export interface CrossAnalysis {
   optimalCount: number;
   /** How many solutions were compared. */
   compared: number;
+  /** Their scores, lowest (friendliest) first: what a solution of one's own is ranked against. */
+  costs: number[];
   /** The friendliest of the shortest solutions. */
   shortest: TrainerSolution;
   /** The friendliest solution of all that were compared; the same object as `shortest` when that one wins. */
@@ -609,8 +615,8 @@ function startOf(perm: readonly number[]): number[] {
   return CROSS_EDGES.map((edge) => edgePlaceCode(perm, edge));
 }
 
-/** A solution (any sequence of face turns that solves the cross from `perm`) read step by step. */
-export function explainSolution(perm: readonly number[], moves: readonly string[], optimal = moves.length): TrainerSolution {
+/** The trace of moves given in the cube's own frame; throws unless they are face turns that solve the cross. */
+function traceMoves(perm: readonly number[], moves: readonly string[]): Trace {
   const trace = traceOf(
     startOf(perm),
     moves.map((move) => {
@@ -620,7 +626,17 @@ export function explainSolution(perm: readonly number[], moves: readonly string[
     }),
   );
   if (!trace.settledAt.every((_, e) => isAligned(trace, trace.n, e))) throw new Error('The moves do not solve the cross');
-  return solutionOf(trace, metricsOf(trace), optimal);
+  return trace;
+}
+
+/**
+ * A solution (any sequence of face turns that solves the cross from `perm`)
+ * read step by step. The moves are in the cube's own frame; with `hold` the
+ * solution is scored as turned in that hold instead of its best one.
+ */
+export function explainSolution(perm: readonly number[], moves: readonly string[], optimal = moves.length, hold?: Hold): TrainerSolution {
+  const trace = traceMoves(perm, moves);
+  return solutionOf(trace, metricsOf(trace, hold), optimal);
 }
 
 /**
@@ -674,9 +690,78 @@ export function analyzeCross(scramble: string): CrossAnalysis {
     optimalLength,
     optimalCount: candidates.filter((c) => c.trace.n === optimalLength).length,
     compared: candidates.length,
+    costs: candidates.map((c) => c.metrics.cost),
     shortest,
     recommended,
     alternatives,
     reasons: recommended === shortest ? [] : reasonsFor(shortest.metrics, recommended.metrics),
+  };
+}
+
+export type SolutionParse = { ok: true; moves: string[] } | { ok: false; reason: 'empty' } | { ok: false; reason: 'invalid'; token: string };
+
+/**
+ * Reads a solution typed by the user: face turns only (U D R L F B with '
+ * or 2), spaces optional, repeated turns of a face merged. Lowercase letters
+ * are refused rather than read as face turns: in a solution they would mean
+ * wide moves or rotations, and how the cube is held is said with the hold.
+ */
+export function parseSolution(input: string): SolutionParse {
+  const lowercase = input.split(/\s+/).find((chunk) => /[a-z]/.test(chunk));
+  if (lowercase !== undefined) return { ok: false, reason: 'invalid', token: lowercase };
+  const parsed = parseCustomScramble(input);
+  if (!parsed.ok) return parsed;
+  const moves = joinMoves(parsed.scramble.split(' ')).split(' ').filter(Boolean);
+  return moves.length === 0 ? { ok: false, reason: 'empty' } : { ok: true, moves };
+}
+
+/** A solution of the user's own, read and measured like the trainer's. */
+export interface Attempt {
+  /**
+   * The user's moves explained step by step. When they don't solve the
+   * cross, the solver's shortest way to finish is appended, so that the
+   * moves made can still be read against where they were going.
+   */
+  solution: TrainerSolution;
+  /** How many of `solution.moves` are the user's own; the rest is the finish. */
+  own: number;
+  solved: boolean;
+  /** Cross edges that are in the cross for good after the user's moves: right against each other, whatever the centres. */
+  inPlace: number;
+  /** The moves appended to finish the cross, in the cube's own frame (empty when solved). */
+  finish: string[];
+  /** A hold in which the same moves turn easier than in the one they were given in. */
+  easierHold: Hold | null;
+  /** Where the solution would stand among the compared ones by score: 1 is as friendly as the recommended one. */
+  rank: number;
+  /** The very moves of one of the trainer's solutions. */
+  same: 'recommended' | 'shortest' | null;
+  /** What the recommended solution does better. */
+  reasons: Reason[];
+}
+
+/**
+ * Measures a solution of the user's own against the analysis. `handMoves`
+ * are face turns as the user makes them holding the cube in `hold`.
+ */
+export function evaluateAttempt(analysis: CrossAnalysis, handMoves: readonly string[], hold: Hold): Attempt {
+  // From the hands back to the cube's own frame: the hold undone.
+  const own = handMoves.map((move) => holdMove(move, mod4(-hold) as Hold));
+  const end = applyMoves(analysis.perm, own);
+  const finish = crossSolver(CROSS_EDGES).solve(end);
+  const trace = traceMoves(analysis.perm, [...own, ...finish]);
+  const metrics = metricsOf(trace, hold);
+  const free = metricsOf(trace);
+  const key = own.join(' ');
+  return {
+    solution: solutionOf(trace, metrics, analysis.optimalLength),
+    own: own.length,
+    solved: finish.length === 0,
+    inPlace: trace.settledAt.filter((t) => t <= own.length).length,
+    finish,
+    easierHold: free.hold !== hold && free.cost < metrics.cost - 1e-9 ? free.hold : null,
+    rank: 1 + analysis.costs.filter((cost) => cost < metrics.cost - 1e-9).length,
+    same: key === analysis.recommended.moves.join(' ') ? 'recommended' : key === analysis.shortest.moves.join(' ') ? 'shortest' : null,
+    reasons: reasonsFor(metrics, analysis.recommended.metrics),
   };
 }
