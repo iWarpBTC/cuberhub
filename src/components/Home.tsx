@@ -3,6 +3,7 @@ import bandUrl from '../assets/color-band-dark.svg';
 import { useLanguage } from '../i18n/LanguageContext';
 import { CHEATSHEET_TABS, TRAINING_SCREENS, routeHref, type CheatsheetTab, type Route, type Section } from '../lib/route';
 import { useStore } from '../store/StoreContext';
+import { BuildInfo } from './BuildInfo';
 import { APP_NAME, SECTION_ACCENT, SectionIcon, sectionRoute } from './sections';
 import { SyncLink } from './SyncLink';
 
@@ -105,7 +106,10 @@ export function Home({ cheatsheetTab }: { cheatsheetTab: CheatsheetTab }) {
             })}
           />
         </ul>
-        <SyncLink className="self-center" />
+        <div className="flex flex-col items-center gap-1">
+          <SyncLink />
+          <BuildInfo />
+        </div>
       </div>
     </main>
   );

@@ -1,8 +1,72 @@
-# Cuber Hub
+<p align="center">
+  <a href="https://cuberhub.cz">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/logo-dark.svg">
+      <img src="docs/logo-light.svg" alt="Cuber Hub" width="300">
+    </picture>
+  </a>
+</p>
 
-A minimal, offline, single-user training hub for the 3x3x3 Rubik's Cube
-(formerly Rubik Timer): a **timer**, a **cheatsheet** and **training**
-without a cube, side by side.
+<p align="center">
+  A training hub for the 3×3×3 Rubik's Cube: a <b>timer</b>, a <b>cheatsheet</b> and <b>training without a cube</b>, side by side.<br>
+  It works offline, needs no account, and can keep your devices in sync.
+</p>
+
+<p align="center">
+  <a href="https://cuberhub.cz"><b>cuberhub.cz</b></a>
+</p>
+
+<p align="center">
+  <a href="https://react.dev"><img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&labelColor=20232a&logo=react&logoColor=61DAFB" alt="React 19"></a>
+  <a href="https://www.typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-7-3178C6?style=flat-square&labelColor=20232a&logo=typescript&logoColor=3178C6" alt="TypeScript 7"></a>
+  <a href="https://vite.dev"><img src="https://img.shields.io/badge/Vite-6-646CFF?style=flat-square&labelColor=20232a&logo=vite&logoColor=FFD62E" alt="Vite 6"></a>
+  <a href="https://tailwindcss.com"><img src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=flat-square&labelColor=20232a&logo=tailwindcss&logoColor=06B6D4" alt="Tailwind CSS 4"></a>
+  <a href="https://www.evolu.dev"><img src="https://img.shields.io/badge/Evolu-8-22C55E?style=flat-square&labelColor=20232a" alt="Evolu 8"></a>
+  <a href="https://sqlite.org"><img src="https://img.shields.io/badge/SQLite-WebAssembly-003B57?style=flat-square&labelColor=20232a&logo=sqlite&logoColor=white" alt="SQLite in WebAssembly"></a>
+  <a href="https://vitest.dev"><img src="https://img.shields.io/badge/Vitest-3-6E9F18?style=flat-square&labelColor=20232a&logo=vitest&logoColor=6E9F18" alt="Vitest 3"></a>
+</p>
+
+<p align="center">
+  <img src="docs/screenshot-timer.jpg" alt="The timer: a set of five scrambles, the active scramble with its cube net" width="71%">
+  &nbsp;
+  <img src="docs/screenshot-training.jpg" alt="The training menu on a phone" width="20.8%">
+</p>
+
+## What it does
+
+- **Timer.** Scrambles are kept, so one can be solved again and again and compared; sets of five or twelve
+  give competition-style rounds with their Ao5 and Ao12. WCA inspection with its penalties is optional.
+- **Cheatsheet.** The notation, all 41 F2L cases with a trainer that walks through a solution move by
+  move, 2-look OLL and the full PLL, each with diagrams.
+- **Training without a cube.** Inspection drills that adapt to how you do: find the white edges, follow
+  them through moves in your head, plan the cross. A guided Cross Trainer shows the shortest cross and
+  the one worth planning.
+- **Yours and offline.** Everything is stored in a database in the browser and the app runs without a
+  connection; it can be put on a phone's home screen. Export and import as JSON.
+- **Sync without an account.** Turn sync on and enter one device's 24-word key on another: both then
+  show the same data. Changes are encrypted on the device, so the server passing them on cannot read
+  them.
+- **English and Czech.**
+
+The colour band in the logo is a cheat too: it is the belt of side colours with white down (blue, red,
+green, orange, round and round), so facing any colour, the one to its right in the band is on your right.
+
+## Getting started
+
+```sh
+npm install
+npm run dev      # start the app
+npm test         # run unit tests (stats, cube simulation, scramble generator, sync rows)
+npm run build    # typecheck + production build
+npm run bump     # next version (year.month.build), before the commit to be released
+npm run deploy   # test, build and release to https://cuberhub.cz (see deploy/README.md)
+```
+
+It was called Rubik Timer before; what that version stored is taken over on the first start.
+
+## Contents
+
+[Navigation](#navigation) · [Timer](#timer) · [Keyboard, mouse and touch](#keyboard-mouse-and-touch) · [Inspection](#inspection) · [Languages](#languages) · [Cheatsheet](#cheatsheet) · [Training](#training) · [Notes](#notes) · [Architecture](#architecture)
 
 ## Navigation
 
@@ -38,16 +102,6 @@ Scrambles are normally generated, but "Own…" next to "New scramble" (and
 with parentheses, lowercase letters or typographic apostrophes allowed. The
 dialog shows the tidied moves and the resulting cube net as you type, names
 the first move it can't read, and takes an optional name for the scramble.
-
-## Usage
-
-```sh
-npm install
-npm run dev      # start the app
-npm test         # run unit tests (stats, cube simulation, scramble generator, sync rows)
-npm run build    # typecheck + production build
-npm run deploy   # test, build and release to https://cuberhub.cz (see deploy/README.md)
-```
 
 ## Keyboard, mouse and touch
 
@@ -297,6 +351,13 @@ cubefreak.net and speedcubelab.com.
   time they were made; deleted rows stay in the database (marked deleted) and
   keep their place. The training progress is worked out by replaying every
   answered task in order, so results from two devices add up.
+- The home page ends with the version and the commit the build was made from
+  (a `+` after the commit means it was built with uncommitted changes) and a
+  button that loads the app again, which is how an app on a phone's home
+  screen gets a new release. The version is year.month.build, the build
+  counting the releases of the month: 26.11.01, 26.11.02, then 26.12.01.
+  `npm run bump` moves it on; `package.json` holds it without the leading
+  zeros (26.11.1), because npm accepts no other form.
 - Export/Import uses a versioned JSON format (`format: "cuberhub", version: 1`).
   Importing replaces all stored data after confirmation. Files exported under
   the former name (`format: "rubik-timer"`) still import, and files exported
@@ -341,5 +402,6 @@ cubefreak.net and speedcubelab.com.
   cube, the F2L trainer and the trainers in `components/training/`.
 - `src/assets/` — the logo and the colour band, copied from the brand
   design.
+- `docs/` — the pictures this README shows.
 - `deploy/` — releasing: the deploy scripts, the server set-up (nginx
   sites, the relay's service) and how it all fits together (`deploy/README.md`).

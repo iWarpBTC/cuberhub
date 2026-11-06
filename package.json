@@ -1,7 +1,7 @@
 {
   "name": "cuberhub",
   "private": true,
-  "version": "1.0.0",
+  "version": "26.11.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "deploy": "sh deploy/deploy.sh"
+    "deploy": "sh deploy/deploy.sh",
+    "bump": "node deploy/bump-version.mjs"
   },
   "dependencies": {
     "@evolu/common": "8.27.2",
@@ -19,6 +20,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.0",
+    "@types/node": "^24.19.2",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "@vitejs/plugin-react": "^4.5.0",

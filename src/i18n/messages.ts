@@ -162,6 +162,14 @@ const en = {
     },
   },
 
+  about: {
+    /** The app's version and the commit it was built from. */
+    build: (version: string, commit: string) => `Version ${version} · ${commit}`,
+    built: (date: string) => `Built ${date}`,
+    reload: 'Reload',
+    reloadTitle: 'Loads the app again; after a release this gets you the new version',
+  },
+
   dialog: { cancel: 'Cancel' },
 
   customScramble: {
@@ -808,6 +816,13 @@ const cs: Messages = {
       OtherBuildRunningError: 'Aplikace je otevřená v jiné záložce v jiné verzi. Zavři tu záložku a pokračuj.',
       UnknownError: 'S daty se něco pokazilo. Zavři všechny záložky s aplikací a otevři ji znovu.',
     },
+  },
+
+  about: {
+    build: (version, commit) => `Verze ${version} · ${commit}`,
+    built: (date) => `Sestaveno ${date}`,
+    reload: 'Načíst znovu',
+    reloadTitle: 'Načte aplikaci znovu; po vydání nové verze ji tím získáš',
   },
 
   dialog: { cancel: 'Zrušit' },

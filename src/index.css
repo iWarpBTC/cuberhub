@@ -4,6 +4,16 @@ html {
   color-scheme: dark;
 }
 
+/*
+ * The page itself has the app's background, not only the app inside it. What a browser draws around the
+ * page takes its colour from here: iOS colours the status bar of an installed app (and the shadow under
+ * it) from the page's background, and no longer from `theme-color`.
+ */
+html,
+body {
+  background-color: var(--color-neutral-950);
+}
+
 :root {
   /* Height of the app header; overlays that leave the logo visible start below it. */
   --header-h: 2.75rem;
