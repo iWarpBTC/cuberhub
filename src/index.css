@@ -6,11 +6,5 @@ html {
 
 :root {
   /* Height of the app header; overlays that leave the logo visible start below it. */
-  --header-h: 3.5rem;
-}
-
-@media (min-width: 40rem) {
-  :root {
-    --header-h: 4rem;
-  }
+  --header-h: 2.75rem;
 }

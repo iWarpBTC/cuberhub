@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import type { TimerState } from '../hooks/useTimer';
 import { useLanguage } from '../i18n/LanguageContext';
 import { scrambleName, setName } from '../i18n/names';
@@ -103,14 +103,21 @@ function SetBar({ scrambleId }: { scrambleId: string }) {
   );
 }
 
+/**
+ * The main panel for a scramble: the scramble, its timer and its solves.
+ * `lead`, when given, is the panel's first line and stands in for the
+ * scramble's name (on a phone it holds the list controls, named after the scramble).
+ */
 export function ScramblePanel({
   timer,
   inspection,
   onInspectionChange,
+  lead,
 }: {
   timer: TimerState;
   inspection: boolean;
   onInspectionChange: (on: boolean) => void;
+  lead?: ReactNode;
 }) {
   const { t } = useLanguage();
   const scramble = useActiveScramble();
@@ -119,28 +126,31 @@ export function ScramblePanel({
 
   if (scramble === null) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 p-4 text-center">
-        <p className="text-sm text-neutral-500">{t.panel.noneSelected}</p>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => dispatch({ type: 'ADD_SCRAMBLE', scramble: createScramble() })}
-            className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500"
-          >
-            {t.list.newScramble}
-          </button>
-          <button
-            type="button"
-            onClick={() => dispatch(addSetAction(5))}
-            className="rounded-md border border-neutral-700 px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-800"
-          >
-            {t.list.newSetTitle(5, averageLabel(5))}
-          </button>
+      <div className="flex h-full flex-col p-4">
+        {lead}
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+          <p className="text-sm text-neutral-500">{t.panel.noneSelected}</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => dispatch({ type: 'ADD_SCRAMBLE', scramble: createScramble() })}
+              className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500"
+            >
+              {t.list.newScramble}
+            </button>
+            <button
+              type="button"
+              onClick={() => dispatch(addSetAction(5))}
+              className="rounded-md border border-neutral-700 px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-800"
+            >
+              {t.list.newSetTitle(5, averageLabel(5))}
+            </button>
+          </div>
+          <p className="hidden text-xs text-neutral-600 md:block">
+            {t.panel.shortcut} <kbd className="rounded border border-neutral-700 px-1">Ctrl+N</kbd> {t.panel.newScrambleShortcut},{' '}
+            <kbd className="rounded border border-neutral-700 px-1">Ctrl+G</kbd> {t.panel.newSetShortcut}
+          </p>
         </div>
-        <p className="hidden text-xs text-neutral-600 md:block">
-          {t.panel.shortcut} <kbd className="rounded border border-neutral-700 px-1">Ctrl+N</kbd> {t.panel.newScrambleShortcut},{' '}
-          <kbd className="rounded border border-neutral-700 px-1">Ctrl+G</kbd> {t.panel.newSetShortcut}
-        </p>
       </div>
     );
   }
@@ -150,8 +160,9 @@ export function ScramblePanel({
   return (
     <div className="mx-auto max-w-3xl space-y-4 p-4 sm:space-y-6 sm:p-6">
       <header>
+        {lead !== undefined && <div className="mb-2">{lead}</div>}
         <SetBar scrambleId={scramble.id} />
-        <div className="text-xs uppercase tracking-wide text-neutral-500">{scrambleName(scramble, t)}</div>
+        {lead === undefined && <div className="text-xs uppercase tracking-wide text-neutral-500">{scrambleName(scramble, t)}</div>}
         <p className="mt-2 font-mono text-lg leading-relaxed tracking-wide text-neutral-100 sm:text-2xl">
           {scramble.scramble}
         </p>

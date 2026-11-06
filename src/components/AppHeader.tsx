@@ -1,4 +1,5 @@
-import logoUrl from '../assets/logo-dark.svg';
+import bandUrl from '../assets/color-band-dark.svg';
+import logoUrl from '../assets/logo-horizontal-dark.svg';
 import { useLanguage } from '../i18n/LanguageContext';
 import { HOME, SECTIONS, routeHref, type CheatsheetTab, type Route } from '../lib/route';
 import { APP_NAME, SECTION_ACCENT, SectionIcon, sectionRoute } from './sections';
@@ -16,15 +17,17 @@ export function AppHeader({ route, cheatsheetTab, dimmed }: { route: Route; chea
         dimmed ? 'opacity-30' : ''
       }`}
     >
-      {/* The file brings its own clear space; the margins take back what the bar doesn't need of it. */}
       <a
         href={routeHref(HOME)}
         aria-label={t.brand.home}
         aria-current={route.page === 'home' ? 'page' : undefined}
         title={t.brand.colorBand}
-        className="-mr-2 -ml-3 shrink-0 rounded-md hover:brightness-125 sm:-ml-2"
+        className="flex shrink-0 items-center rounded-md hover:brightness-125"
       >
-        <img src={logoUrl} alt={APP_NAME} width={360} height={188} className="h-full w-auto" />
+        {/* A phone has room for the band alone; the name stands beside it from `sm` up. */}
+        <img src={bandUrl} alt={APP_NAME} width={106} height={28} className="mr-1 ml-3 h-5 w-auto sm:hidden" />
+        {/* The file brings its own clear space; the margin takes back what the bar doesn't need of it. */}
+        <img src={logoUrl} alt={APP_NAME} width={520} height={120} className="-mr-1 hidden h-full w-auto max-w-none sm:block" />
       </a>
       <nav aria-label={t.nav.sections} className="flex min-w-0 items-stretch overflow-x-auto">
         {SECTIONS.map((section) => {

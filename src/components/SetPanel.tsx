@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import type { ScrambleSet } from '../types';
 import { useDispatch, useSolvesPerScramble, useStore } from '../store/StoreContext';
 import { averageLabel, computeSetStats, isDnf } from '../lib/stats';
@@ -11,12 +11,17 @@ import { CustomScrambleDialog } from './CustomScrambleDialog';
 
 const ACTION_BUTTON = 'rounded-md border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800';
 
-/** The main panel for a set: its rounds with their averages, its scrambles and notes. */
+/**
+ * The main panel for a set: its rounds with their averages, its scrambles and notes.
+ * `lead`, when given, is the panel's first line and stands in for the set's number.
+ */
 export function SetPanel({
   set,
+  lead,
   onDialogOpenChange,
 }: {
   set: ScrambleSet;
+  lead?: ReactNode;
   onDialogOpenChange: (open: boolean) => void;
 }) {
   const { t } = useLanguage();
@@ -57,7 +62,7 @@ export function SetPanel({
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6">
       <header>
-        <div className="text-xs uppercase tracking-wide text-neutral-500">{t.setName(set.number)}</div>
+        {lead ?? <div className="text-xs uppercase tracking-wide text-neutral-500">{t.setName(set.number)}</div>}
         <h1 className="mt-1 text-xl font-semibold text-neutral-100">{setName(set, t)}</h1>
       </header>
 

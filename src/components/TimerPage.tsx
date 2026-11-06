@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useTimer } from '../hooks/useTimer';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useLanguage } from '../i18n/LanguageContext';
+import { scrambleName } from '../i18n/names';
 import { createScramble } from '../lib/scramble';
 import { newId } from '../lib/id';
 import { loadInspection, loadListOpen, saveInspection, saveListOpen } from '../lib/storage';
-import { addSetAction, useActiveSet, useDispatch, useSetOf, useStore } from '../store/StoreContext';
+import { addSetAction, useActiveScramble, useActiveSet, useDispatch, useSetOf, useStore } from '../store/StoreContext';
 import { ScrambleList } from './ScrambleList';
 import { ScramblePanel } from './ScramblePanel';
 import { SetPanel } from './SetPanel';
@@ -25,8 +26,9 @@ const TOOLBAR_BUTTON =
 
 /**
  * The timer: the scramble list beside the active scramble (or set) with its
- * timer. `onSolvingChange` tells the shell while a solve is being timed;
- * `onOpenCheatsheet` is the `?` shortcut.
+ * timer. The controls of the list are a bar over the panel on a wide screen
+ * and the panel's first line on a phone. `onSolvingChange` tells the shell
+ * while a solve is being timed; `onOpenCheatsheet` is the `?` shortcut.
  */
 export function TimerPage({
   onSolvingChange,
@@ -37,6 +39,7 @@ export function TimerPage({
 }) {
   const { t } = useLanguage();
   const { activeScrambleId, selectedSolveId } = useStore();
+  const activeScramble = useActiveScramble();
   const activeSet = useActiveSet();
   const setOfActive = useSetOf(activeScrambleId);
   const dispatch = useDispatch();
@@ -153,6 +156,55 @@ export function TimerPage({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [dispatch, setListOpen, wide]);
 
+  // The button that shows and hides the list. With a label it reads as that label; alone, the icon needs a name.
+  const listAction = listOpen ? t.toolbar.hideList : t.toolbar.showList;
+  const listButton = (label?: string) => (
+    <button
+      type="button"
+      onClick={() => setListOpen(!listOpen)}
+      aria-expanded={listOpen}
+      aria-label={label === undefined ? listAction : undefined}
+      title={listAction}
+      className={`${TOOLBAR_BUTTON} min-w-0`}
+    >
+      <svg viewBox="0 0 20 20" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+        <rect x="2.75" y="3.75" width="14.5" height="12.5" rx="2" />
+        <path d="M7.75 3.75v12.5" />
+      </svg>
+      {label !== undefined && <span className="truncate">{label}</span>}
+    </button>
+  );
+  const newButtons = (
+    <>
+      <button
+        type="button"
+        onClick={() => dispatch({ type: 'ADD_SCRAMBLE', scramble: createScramble() })}
+        className={TOOLBAR_BUTTON}
+      >
+        <span aria-hidden="true" className="text-base leading-none">+</span> {t.toolbar.new}
+      </button>
+      <button
+        type="button"
+        onClick={() => dispatch(addSetAction(5))}
+        title={t.list.newSetTitle(5, 'Ao5')}
+        className={TOOLBAR_BUTTON}
+      >
+        <span aria-hidden="true" className="text-base leading-none">+</span> {t.toolbar.newSet}
+      </button>
+    </>
+  );
+  // A phone has no room for a bar under the header: there the controls are the first line of the panel,
+  // and the list button carries the name of what the panel shows.
+  const leadLabel =
+    activeSet !== null ? t.setName(activeSet.number) : activeScramble !== null ? scrambleName(activeScramble, t) : null;
+  const lead: ReactNode = wide ? undefined : (
+    <div className="-mx-2 -mt-2 flex items-center gap-1">
+      {listButton(leadLabel ?? t.toolbar.scrambles)}
+      {/* With nothing chosen the panel itself offers a new scramble and a new set. */}
+      {leadLabel !== null && <span className="ml-auto flex shrink-0 gap-1">{newButtons}</span>}
+    </div>
+  );
+
   return (
     <div className="flex min-h-0 flex-1">
       {/* The drawer and its backdrop start below the header, so the logo stays in sight. */}
@@ -170,48 +222,19 @@ export function TimerPage({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex shrink-0 flex-wrap items-center gap-1 border-b border-neutral-800 px-2 py-1">
-          <button
-            type="button"
-            onClick={() => setListOpen(!listOpen)}
-            aria-expanded={listOpen}
-            aria-label={listOpen ? t.toolbar.hideList : t.toolbar.showList}
-            title={listOpen ? t.toolbar.hideList : t.toolbar.showList}
-            className={TOOLBAR_BUTTON}
-          >
-            <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-              <rect x="2.75" y="3.75" width="14.5" height="12.5" rx="2" />
-              <path d="M7.75 3.75v12.5" />
-            </svg>
-            <span className="md:hidden">{t.toolbar.scrambles}</span>
-          </button>
-          {!listOpen && (
-            <>
-              <button
-                type="button"
-                onClick={() => dispatch({ type: 'ADD_SCRAMBLE', scramble: createScramble() })}
-                className={TOOLBAR_BUTTON}
-              >
-                <span aria-hidden="true" className="text-base leading-none">+</span> {t.toolbar.new}
-              </button>
-              <button
-                type="button"
-                onClick={() => dispatch(addSetAction(5))}
-                title={t.list.newSetTitle(5, 'Ao5')}
-                className={TOOLBAR_BUTTON}
-              >
-                <span aria-hidden="true" className="text-base leading-none">+</span> {t.toolbar.newSet}
-              </button>
-            </>
-          )}
-        </div>
+        {wide && (
+          <div className="flex shrink-0 flex-wrap items-center gap-1 border-b border-neutral-800 px-2 py-1">
+            {listButton()}
+            {!listOpen && newButtons}
+          </div>
+        )}
         <main
           className={`min-h-0 flex-1 overflow-y-auto transition-colors duration-150 ${running ? 'bg-green-800' : ''}`}
         >
           {activeSet !== null ? (
-            <SetPanel set={activeSet} onDialogOpenChange={setDialogOpen} />
+            <SetPanel set={activeSet} lead={lead} onDialogOpenChange={setDialogOpen} />
           ) : (
-            <ScramblePanel timer={timer} inspection={inspection} onInspectionChange={setInspection} />
+            <ScramblePanel timer={timer} inspection={inspection} onInspectionChange={setInspection} lead={lead} />
           )}
         </main>
       </div>
