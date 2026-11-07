@@ -6,8 +6,12 @@
     <!-- The colour of the app's own background (neutral-950), so browser bars continue it. -->
     <meta name="theme-color" content="#0a0a0a" />
     <meta name="apple-mobile-web-app-title" content="Cuber Hub" />
-    <link rel="icon" href="/favicon.ico" sizes="32x32" />
-    <link rel="icon" type="image/svg+xml" href="/icons/logo.svg" />
+    <!-- Sized PNGs first: Safari takes the first icon with a size and cannot draw the SVG; the others
+         prefer the SVG, which "any" marks as the one for every size. -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32" />
+    <link rel="icon" type="image/svg+xml" sizes="any" href="/icons/logo.svg" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-v2.png" />
     <link rel="manifest" href="/site.webmanifest" />
     <title>Cuber Hub</title>
